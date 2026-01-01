@@ -78,8 +78,8 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
               <div
                 className="coverPreviewOverlay"
                 style={{
-                  ["--coverPrimary"]: cover?.primaryColor || "#2563EB",
-                  ["--coverSecondary"]: cover?.secondaryColor || "#F59E0B"
+                  "--coverPrimary": cover?.primaryColor || "#2563EB",
+                  "--coverSecondary": cover?.secondaryColor || "#F59E0B"
                 }}
               />
 
@@ -180,7 +180,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                 className="lastAccentRow"
                 aria-hidden="true"
                 style={{
-                  ["--lastAccent"]: last?.accentColor || "#2563EB"
+                  "--lastAccent": last?.accentColor || "#2563EB"
                 }}
               >
                 <span className="lastAccentSq" style={{ background: last?.accentColor || "#2563EB" }} />

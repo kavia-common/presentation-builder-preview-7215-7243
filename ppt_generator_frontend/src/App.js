@@ -68,7 +68,11 @@ function App() {
   const isLastSelected = selectedId === GLOBAL_LAST_ID;
   const isSkillFactorySlide1Selected = selectedId?.startsWith(SKILL_FACTORY_SLIDE1_PREFIX);
 
-  const factories = Array.isArray(skillFactoriesState?.factories) ? skillFactoriesState.factories : [];
+  // Memoize to keep a stable reference for hook dependency lists (CI treats hook warnings as errors).
+  const factories = useMemo(
+    () => (Array.isArray(skillFactoriesState?.factories) ? skillFactoriesState.factories : []),
+    [skillFactoriesState?.factories]
+  );
 
   const selectedFactoryId = useMemo(() => {
     if (!isSkillFactorySlide1Selected) return null;
@@ -153,19 +157,20 @@ function App() {
     return "Ready to generate.";
   }, [slides.length, validation]);
 
-  const addSkillFactory = () => {
+  const addSkillFactory = useCallback(() => {
     const f = createDefaultSkillFactory();
     setSkillFactoriesState((prev) => ({
       factories: [...(Array.isArray(prev?.factories) ? prev.factories : []), f]
     }));
+    // Immediately select the newly created factory's Slide 1 editor.
     setSelectedId(`${SKILL_FACTORY_SLIDE1_PREFIX}${f.id}`);
-  };
+  }, []);
 
-  const deleteSkillFactory = (factoryId) => {
+  const deleteSkillFactory = useCallback((factoryId) => {
     setSkillFactoriesState((prev) => ({
       factories: (Array.isArray(prev?.factories) ? prev.factories : []).filter((f) => f.id !== factoryId)
     }));
-  };
+  }, []);
 
   const updateSkillFactorySlide1 = (factoryId, slide1Patch) => {
     setSkillFactoriesState((prev) =>
@@ -258,7 +263,7 @@ function App() {
     } finally {
       setIsGenerating(false);
     }
-  }, [canGenerate, isGenerating, buildSuggestedFileName, globalCoverSlide, slides]);
+  }, [canGenerate, isGenerating, buildSuggestedFileName, globalCoverSlide, globalLastSlide, factories, slides]);
 
   const onGenerate = () => {
     // Preview-first UX: open the full-deck preview (cover + all slides) before download.
