@@ -6,7 +6,7 @@ import Breadcrumbs from "./Breadcrumbs";
  * Full-deck presentation preview modal.
  * - Renders Global Cover + all content slides + Global Last Page in sequence
  * - Supports keyboard navigation (left/right), Esc to close
- * - Supports "zoom to fit" behavior and manual zoom
+ * - Uses SlidePreview fit-to-width + zoom controls for consistent sizing
  * - Includes a prominent Download button that triggers PPTX export
  */
 
@@ -25,11 +25,8 @@ export default function PresentationPreviewModal({
 }) {
   /** Modal that previews the entire presentation and provides download/export actions. */
   const [activeIndex, setActiveIndex] = useState(0); // 0 = cover, ... last = final
-  const [zoomMode, setZoomMode] = useState("fit"); // "fit" | "100" | "125" | "150"
-  const [fitScale, setFitScale] = useState(1);
 
   const modalRef = useRef(null);
-  const contentRef = useRef(null);
   const stripRef = useRef(null);
   const activeThumbRef = useRef(null);
 
@@ -55,18 +52,11 @@ export default function PresentationPreviewModal({
   useEffect(() => {
     if (!open) return;
     setActiveIndex(0);
-    setZoomMode("fit");
   }, [open]);
 
-  const clampIndex = useCallback(
-    (idx) => Math.max(0, Math.min(total - 1, idx)),
-    [total]
-  );
+  const clampIndex = useCallback((idx) => Math.max(0, Math.min(total - 1, idx)), [total]);
 
-  const goTo = useCallback(
-    (idx) => setActiveIndex(clampIndex(idx)),
-    [clampIndex]
-  );
+  const goTo = useCallback((idx) => setActiveIndex(clampIndex(idx)), [clampIndex]);
 
   const goPrev = useCallback(() => goTo(activeIndex - 1), [goTo, activeIndex]);
   const goNext = useCallback(() => goTo(activeIndex + 1), [goTo, activeIndex]);
@@ -155,46 +145,6 @@ export default function PresentationPreviewModal({
     return items;
   }, [active, activeIndex, skillFactories]);
 
-  // "Zoom to fit" computation: scale the 16:9 slide area to available space.
-  useEffect(() => {
-    if (!open) return;
-    if (zoomMode !== "fit") return;
-
-    const computeFit = () => {
-      const wrap = contentRef.current;
-      if (!wrap) return;
-
-      // Available space inside preview body
-      const rect = wrap.getBoundingClientRect();
-      const availW = Math.max(0, rect.width);
-      const availH = Math.max(0, rect.height);
-
-      // "Base" slide size in CSS px (independent of actual 16:9 ratio).
-      // These numbers are just a baseline for scaling; aspect-ratio is enforced via CSS.
-      const baseW = 1280;
-      const baseH = 720;
-
-      const margin = 14; // avoid edge collisions
-      const scale = Math.min((availW - margin) / baseW, (availH - margin) / baseH);
-
-      // Clamp so it doesn't get comically large on wide screens
-      const clamped = Math.max(0.35, Math.min(1.2, Number.isFinite(scale) ? scale : 1));
-      setFitScale(clamped);
-    };
-
-    computeFit();
-    window.addEventListener("resize", computeFit);
-    return () => window.removeEventListener("resize", computeFit);
-  }, [open, zoomMode]);
-
-  const effectiveScale = useMemo(() => {
-    if (zoomMode === "fit") return fitScale;
-    if (zoomMode === "100") return 1;
-    if (zoomMode === "125") return 1.25;
-    if (zoomMode === "150") return 1.5;
-    return 1;
-  }, [zoomMode, fitScale]);
-
   const onBackdropMouseDown = (e) => {
     // close on backdrop click only
     if (e.target === e.currentTarget) onClose?.();
@@ -239,24 +189,6 @@ export default function PresentationPreviewModal({
           </div>
 
           <div className="ppHeaderActions">
-            <div className="ppZoom">
-              <label className="ppZoomLabel" htmlFor="ppZoomSelect">
-                Zoom
-              </label>
-              <select
-                id="ppZoomSelect"
-                className="select"
-                value={zoomMode}
-                onChange={(e) => setZoomMode(e.target.value)}
-                aria-label="Zoom control"
-              >
-                <option value="fit">Fit</option>
-                <option value="100">100%</option>
-                <option value="125">125%</option>
-                <option value="150">150%</option>
-              </select>
-            </div>
-
             <button
               type="button"
               className="btn"
@@ -334,61 +266,49 @@ export default function PresentationPreviewModal({
               <button type="button" className="btn btnGhost btnSmall" onClick={goPrev} disabled={activeIndex === 0}>
                 ← Prev
               </button>
-              <button
-                type="button"
-                className="btn btnGhost btnSmall"
-                onClick={goNext}
-                disabled={activeIndex === total - 1}
-              >
+              <button type="button" className="btn btnGhost btnSmall" onClick={goNext} disabled={activeIndex === total - 1}>
                 Next →
               </button>
             </div>
 
-            <div className="ppPreviewFrame" ref={contentRef}>
-              <div
-                className="ppScaled"
-                style={{
-                  transform: `scale(${effectiveScale})`
-                }}
-              >
-                {/* We reuse the existing SlidePreview component as the slide renderer. */}
-                <div className="ppSlideCard">
-                  <SlidePreview
-                    mode={
-                      active.kind === "cover"
-                        ? "cover"
-                        : active.kind === "last"
-                          ? "last"
-                          : active.kind === "skillFactorySlide1"
-                            ? "skillFactorySlide1"
-                            : active.kind === "skillFactorySlide2"
-                              ? "skillFactorySlide2"
-                              : active.kind === "skillFactorySlide3"
-                                ? "skillFactorySlide3"
-                                : active.kind === "skillFactorySlide4"
-                                  ? "skillFactorySlide4"
-                                  : "slide"
-                    }
-                    cover={cover}
-                    last={last}
-                    slide={active.kind === "slide" ? active.data : null}
-                    skillFactory={
-                      active.kind === "skillFactorySlide1" ||
-                      active.kind === "skillFactorySlide2" ||
-                      active.kind === "skillFactorySlide3" ||
-                      active.kind === "skillFactorySlide4"
-                        ? active.data
-                        : null
-                    }
-                    slideIndex={activeIndex}
-                    totalSlides={total}
-                  />
-                </div>
+            <div className="ppPreviewFrame">
+              <div className="ppSlideCard">
+                <SlidePreview
+                  mode={
+                    active.kind === "cover"
+                      ? "cover"
+                      : active.kind === "last"
+                        ? "last"
+                        : active.kind === "skillFactorySlide1"
+                          ? "skillFactorySlide1"
+                          : active.kind === "skillFactorySlide2"
+                            ? "skillFactorySlide2"
+                            : active.kind === "skillFactorySlide3"
+                              ? "skillFactorySlide3"
+                              : active.kind === "skillFactorySlide4"
+                                ? "skillFactorySlide4"
+                                : "slide"
+                  }
+                  cover={cover}
+                  last={last}
+                  slide={active.kind === "slide" ? active.data : null}
+                  skillFactory={
+                    active.kind === "skillFactorySlide1" ||
+                    active.kind === "skillFactorySlide2" ||
+                    active.kind === "skillFactorySlide3" ||
+                    active.kind === "skillFactorySlide4"
+                      ? active.data
+                      : null
+                  }
+                  slideIndex={activeIndex}
+                  totalSlides={total}
+                  showChrome
+                />
               </div>
             </div>
 
             <div className="ppFooterHint">
-              Tip: Use <strong>Fit</strong> on smaller screens. Use <strong>Esc</strong> to close.
+              Tip: Preview uses <strong>Fit</strong> by default. Use <strong>Esc</strong> to close.
             </div>
           </section>
         </div>

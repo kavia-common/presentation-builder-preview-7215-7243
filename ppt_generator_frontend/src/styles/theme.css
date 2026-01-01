@@ -214,6 +214,98 @@ a{color:inherit}
   .editorBreadcrumbRow .bcCrumb{max-width:100%}
 }
 
+/* --- App layout v2: left hierarchy + right split preview/editor --- */
+.gridV2{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+@media (max-width: 1100px){.gridV2{grid-template-columns:320px 1fr}}
+@media (max-width: 980px){.gridV2{grid-template-columns:1fr}}
+.rightPane{display:grid;gap:12px;align-content:start;min-width:0}
+.splitWrap{display:grid;grid-template-columns:var(--splitPct, 50%) 10px 1fr;gap:0;min-width:0;min-height:0}
+.splitPane{min-width:0;min-height:0}
+.splitDivider{display:grid;place-items:center;cursor:col-resize;user-select:none}
+.splitDivider:focus{outline:2px solid rgba(37,99,235,0.35);border-radius:10px}
+.splitGrip{width:6px;height:46px;border-radius:999px;background:rgba(17,24,39,0.18)}
+.noSelect{user-select:none}
+
+/* On small screens stack preview above editor (divider hidden) */
+@media (max-width: 980px){
+  .splitWrap{grid-template-columns:1fr;gap:14px}
+  .splitDivider{display:none}
+}
+
+/* --- Slide hierarchy (grouped, collapsible) --- */
+.slCard{min-width:0}
+.slBody{display:grid;gap:12px}
+.slGroup{display:grid;gap:8px}
+.slGroupHeader{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.slGroupToggle{appearance:none;border:1px solid rgba(17,24,39,0.10);background:rgba(17,24,39,0.02);border-radius:12px;padding:10px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;width:100%;text-align:left;min-width:0}
+.slGroupToggle:hover{background:rgba(17,24,39,0.035)}
+.slGroupChevron{color:rgba(17,24,39,0.55);font-weight:900}
+.slGroupTitle{font-size:12px;font-weight:950;color:rgba(17,24,39,0.86);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slGroupCount{margin-left:auto;font-size:11px;color:rgba(17,24,39,0.55);border:1px solid rgba(17,24,39,0.10);background:#fff;border-radius:999px;padding:4px 8px;font-weight:900}
+.slGroupHeaderActions{flex:0 0 auto}
+.slGroupBody{display:grid;gap:10px}
+.slSubGroup{display:grid;gap:8px}
+.slListSub .slItemButton{padding-top:8px;padding-bottom:8px}
+.slListSub .slKicker{font-size:11px}
+
+/* --- Slide list item styles (existing classnames, but ensure minimal noise) --- */
+.slList{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.slItem{border:1px solid rgba(17,24,39,0.12);border-radius:14px;background:#fff;overflow:hidden}
+.slItemPinned{background:rgba(37,99,235,0.03)}
+.slItemActive{outline:2px solid rgba(37,99,235,0.35);border-color:rgba(37,99,235,0.35)}
+.slItemButton{width:100%;text-align:left;padding:10px 10px}
+.slMetaTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.slKicker{font-size:10px;color:rgba(17,24,39,0.55);font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+.slTitle{margin-top:4px;font-size:12px;font-weight:950;color:rgba(17,24,39,0.86);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slSub{margin-top:3px;font-size:12px;color:rgba(17,24,39,0.58);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slIndex{font-size:11px;color:rgba(17,24,39,0.55);font-weight:950}
+.slItemFooter{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 10px;border-top:1px solid rgba(17,24,39,0.08);background:rgba(17,24,39,0.012)}
+.slActions{display:flex;gap:6px}
+.slEmpty{border-radius:14px;border:1px dashed rgba(17,24,39,0.18);padding:14px;background:rgba(17,24,39,0.02)}
+
+/* Danger buttons (used sparingly) */
+.btnDanger{background:#EF4444;border-color:rgba(239,68,68,0.35);box-shadow:0 6px 14px rgba(239,68,68,0.18);color:#fff}
+.btnDanger:hover{box-shadow:0 8px 18px rgba(239,68,68,0.22)}
+
+/* --- SlidePreview fit-to-width wrapper --- */
+.pvBody{
+  /* Keep preview from overflowing its pane */
+  min-width:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+}
+.pvZoom{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.pvScaled{
+  width:1280px;
+  height:720px;
+  transform-origin:top left;
+  transition:transform .12s ease;
+}
+.pvSlide{
+  width:1280px;
+  height:720px;
+  max-width:100%;
+  max-height:100%;
+  overflow:hidden;
+}
+/* Prevent images inside preview from forcing horizontal scroll */
+.pvBody img{max-width:100%}
+
+/* Presentation preview modal: allow SlidePreview to handle scaling inside card */
+.ppPreviewFrame{
+  flex:1;
+  min-height:0;
+  min-width:0;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  overflow:auto;
+  overscroll-behavior:contain;
+}
+.ppSlideCard{
+  min-width:0;
+}
+
 /* --- Editor form sections (collapsible, minimal) --- */
 .formStack{display:grid;gap:12px}
 .formSection{border:1px solid rgba(17,24,39,0.08);border-radius:14px;background:rgba(17,24,39,0.015);overflow:hidden}

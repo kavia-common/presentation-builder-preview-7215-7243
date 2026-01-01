@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import "./styles/theme.css";
 
@@ -12,12 +12,7 @@ import Breadcrumbs from "./components/Breadcrumbs";
 import { createEmptySlide, validateSlides } from "./utils/slideModel";
 import { exportSlidesToPptx } from "./utils/pptExport";
 import { createDefaultCover, loadCoverFromStorage, revokeCoverObjectUrl, saveCoverToStorage } from "./utils/coverModel";
-import {
-  createDefaultLastSlide,
-  loadLastSlideFromStorage,
-  revokeLastSlideObjectUrls,
-  saveLastSlideToStorage
-} from "./utils/lastSlideModel";
+import { createDefaultLastSlide, loadLastSlideFromStorage, revokeLastSlideObjectUrls, saveLastSlideToStorage } from "./utils/lastSlideModel";
 import {
   createDefaultSkillFactory,
   createDefaultSkillFactoryState,
@@ -25,6 +20,7 @@ import {
   saveSkillFactoriesToStorage,
   upsertSkillFactory
 } from "./utils/skillFactoryModel";
+import useLocalStorageState from "./utils/useLocalStorageState";
 
 const GLOBAL_COVER_ID = "__global_cover__";
 const GLOBAL_LAST_ID = "__global_last__";
@@ -32,6 +28,8 @@ const SKILL_FACTORY_SLIDE1_PREFIX = "__skill_factory_slide1__:";
 const SKILL_FACTORY_SLIDE2_PREFIX = "__skill_factory_slide2__:";
 const SKILL_FACTORY_SLIDE3_PREFIX = "__skill_factory_slide3__:";
 const SKILL_FACTORY_SLIDE4_PREFIX = "__skill_factory_slide4__:";
+
+const LS_SPLIT_KEY = "pptgen_right_split_pct_v1";
 
 function makeTimestamp(d = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");
@@ -51,9 +49,13 @@ function safeFileBaseName(name) {
     .slice(0, 80);
 }
 
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
 // PUBLIC_INTERFACE
 function App() {
-  /** Main UI entry point: slide editor + preview + export (frontend-only). */
+  /** Main UI entry point: grouped slide hierarchy + side-by-side preview/editor + export (frontend-only). */
   const [globalCoverSlide, setGlobalCoverSlide] = useState(() => loadCoverFromStorage() || createDefaultCover());
   const [globalLastSlide, setGlobalLastSlide] = useState(() => loadLastSlideFromStorage() || createDefaultLastSlide());
 
@@ -68,12 +70,19 @@ function App() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [toast, setToast] = useState({ open: false, variant: "info", title: "", message: "", autoHideMs: 0 });
 
+  // Right pane divider: percentage width for preview (left) vs editor (right).
+  const [splitPct, setSplitPct] = useLocalStorageState(LS_SPLIT_KEY, 50);
+
   const isCoverSelected = selectedId === GLOBAL_COVER_ID;
   const isLastSelected = selectedId === GLOBAL_LAST_ID;
   const isSkillFactorySlide1Selected = selectedId?.startsWith(SKILL_FACTORY_SLIDE1_PREFIX);
   const isSkillFactorySlide2Selected = selectedId?.startsWith(SKILL_FACTORY_SLIDE2_PREFIX);
   const isSkillFactorySlide3Selected = selectedId?.startsWith(SKILL_FACTORY_SLIDE3_PREFIX);
   const isSkillFactorySlide4Selected = selectedId?.startsWith(SKILL_FACTORY_SLIDE4_PREFIX);
+
+  const rightPaneRef = useRef(null);
+  const splitWrapRef = useRef(null);
+  const dragStateRef = useRef({ dragging: false });
 
   // Memoize to keep a stable reference for hook dependency lists (CI treats hook warnings as errors).
   const factories = useMemo(
@@ -452,7 +461,39 @@ function App() {
     selectedIndex
   ]);
 
+  // Ensure the side-by-side pane is visible when selection changes (helps when user scrolls left rail).
+  useEffect(() => {
+    rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+  }, [selectedId]);
+
   const generateDisabled = !canGenerate || isGenerating;
+
+  // Resizable divider handlers
+  const startDrag = (e) => {
+    e.preventDefault();
+    dragStateRef.current.dragging = true;
+    document.body.classList.add("noSelect");
+
+    const onMove = (ev) => {
+      if (!dragStateRef.current.dragging) return;
+      const wrap = splitWrapRef.current;
+      if (!wrap) return;
+      const rect = wrap.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const pct = (x / rect.width) * 100;
+      setSplitPct(clamp(pct, 28, 72)); // keep both panes usable
+    };
+
+    const onUp = () => {
+      dragStateRef.current.dragging = false;
+      document.body.classList.remove("noSelect");
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
 
   return (
     <div className="appShell">
@@ -513,7 +554,7 @@ function App() {
 
       <main className="appMain">
         <div className="container">
-          <div className="grid">
+          <div className="gridV2">
             <SlideList
               globalCover={{ id: GLOBAL_COVER_ID, data: globalCoverSlide }}
               globalLast={{ id: GLOBAL_LAST_ID, data: globalLastSlide }}
@@ -529,85 +570,111 @@ function App() {
               onMoveDown={(idx) => moveSlide(idx, idx + 1)}
             />
 
-            <div style={{ display: "grid", gap: 12, alignContent: "start", minWidth: 0 }}>
+            <section className="rightPane" aria-label="Preview and editor" ref={rightPaneRef}>
               <div className="editorBreadcrumbRow">
                 <Breadcrumbs items={breadcrumbItems} ariaLabel="Editor breadcrumb" />
               </div>
 
-              <SlidePreview {...previewProps} />
-            </div>
-
-            <div style={{ display: "grid", gap: 16 }}>
-              <div className="editorBreadcrumbRow">
-                <Breadcrumbs items={breadcrumbItems} ariaLabel="Editor breadcrumb" />
-              </div>
-
-              <SlideForm
-                mode={
-                  isCoverSelected
-                    ? "cover"
-                    : isLastSelected
-                      ? "last"
-                      : isSkillFactorySlide4Selected
-                        ? "skillFactorySlide4"
-                        : isSkillFactorySlide3Selected
-                          ? "skillFactorySlide3"
-                          : isSkillFactorySlide2Selected
-                            ? "skillFactorySlide2"
-                            : isSkillFactorySlide1Selected
-                              ? "skillFactorySlide1"
-                              : "slide"
-                }
-                slide={
-                  isCoverSelected ||
-                  isLastSelected ||
-                  isSkillFactorySlide1Selected ||
-                  isSkillFactorySlide2Selected ||
-                  isSkillFactorySlide3Selected ||
-                  isSkillFactorySlide4Selected
-                    ? null
-                    : selectedSlide
-                }
-                cover={globalCoverSlide}
-                last={globalLastSlide}
-                skillFactory={selectedFactory}
-                onChange={updateSelected}
-                onCoverChange={updateCover}
-                onLastChange={setGlobalLastSlide}
-                onSkillFactorySlide1Change={(patch) => selectedFactoryId && updateSkillFactorySlide1(selectedFactoryId, patch)}
-                onSkillFactorySlide2Change={(patch) => selectedFactoryId && updateSkillFactorySlide2(selectedFactoryId, patch)}
-                onSkillFactorySlide3Change={(patch) => selectedFactoryId && updateSkillFactorySlide3(selectedFactoryId, patch)}
-                onSkillFactorySlide4Change={(patch) => selectedFactoryId && updateSkillFactorySlide4(selectedFactoryId, patch)}
-              />
-
-              <section className="card" aria-label="How to use">
-                <div className="cardHeader">
-                  <h2 className="cardTitle">How to use</h2>
-                  <p className="cardHint">Quick workflow</p>
+              <div className="splitWrap" ref={splitWrapRef} style={{ ["--splitPct"]: `${splitPct}%` }}>
+                <div className="splitPane splitPaneLeft" aria-label="Preview pane">
+                  <SlidePreview {...previewProps} />
                 </div>
-                <div className="cardBody">
-                  <ol style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8, color: "#111827", fontSize: 13, lineHeight: 1.5 }}>
-                    <li>Edit the fixed <strong>Global Cover</strong> (slide 1) for title, subtitle, tagline and background.</li>
-                    <li>Edit the fixed <strong>Global Last Page</strong> (always the final slide) for a closing message and optional branding.</li>
-                    <li>Add slides with <strong>+ Add</strong>.</li>
-                    <li>Fill in a <strong>title</strong> (required), subtitle, bullets, and optional image.</li>
-                    <li>Pick theme colors and confirm in <strong>Preview</strong>.</li>
-                    <li>
-                      Click <strong>Generate PPT</strong> to preview the full deck and download.
-                      <div className="kbdHint" style={{ marginTop: 6 }}>
-                        In preview: use ←/→ to navigate, Esc to close.
+
+                <div
+                  className="splitDivider"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize preview/editor"
+                  tabIndex={0}
+                  onMouseDown={startDrag}
+                  onKeyDown={(e) => {
+                    // Keyboard resize for accessibility
+                    if (e.key === "ArrowLeft") setSplitPct((p) => clamp(Number(p) - 2, 28, 72));
+                    if (e.key === "ArrowRight") setSplitPct((p) => clamp(Number(p) + 2, 28, 72));
+                  }}
+                >
+                  <div className="splitGrip" aria-hidden="true" />
+                </div>
+
+                <div className="splitPane splitPaneRight" aria-label="Editor pane">
+                  <SlideForm
+                    mode={
+                      isCoverSelected
+                        ? "cover"
+                        : isLastSelected
+                          ? "last"
+                          : isSkillFactorySlide4Selected
+                            ? "skillFactorySlide4"
+                            : isSkillFactorySlide3Selected
+                              ? "skillFactorySlide3"
+                              : isSkillFactorySlide2Selected
+                                ? "skillFactorySlide2"
+                                : isSkillFactorySlide1Selected
+                                  ? "skillFactorySlide1"
+                                  : "slide"
+                    }
+                    slide={
+                      isCoverSelected ||
+                      isLastSelected ||
+                      isSkillFactorySlide1Selected ||
+                      isSkillFactorySlide2Selected ||
+                      isSkillFactorySlide3Selected ||
+                      isSkillFactorySlide4Selected
+                        ? null
+                        : selectedSlide
+                    }
+                    cover={globalCoverSlide}
+                    last={globalLastSlide}
+                    skillFactory={selectedFactory}
+                    onChange={updateSelected}
+                    onCoverChange={updateCover}
+                    onLastChange={setGlobalLastSlide}
+                    onSkillFactorySlide1Change={(patch) => selectedFactoryId && updateSkillFactorySlide1(selectedFactoryId, patch)}
+                    onSkillFactorySlide2Change={(patch) => selectedFactoryId && updateSkillFactorySlide2(selectedFactoryId, patch)}
+                    onSkillFactorySlide3Change={(patch) => selectedFactoryId && updateSkillFactorySlide3(selectedFactoryId, patch)}
+                    onSkillFactorySlide4Change={(patch) => selectedFactoryId && updateSkillFactorySlide4(selectedFactoryId, patch)}
+                  />
+
+                  <section className="card" aria-label="How to use">
+                    <div className="cardHeader">
+                      <h2 className="cardTitle">How to use</h2>
+                      <p className="cardHint">Quick workflow</p>
+                    </div>
+                    <div className="cardBody">
+                      <ol style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8, color: "#111827", fontSize: 13, lineHeight: 1.5 }}>
+                        <li>
+                          Edit the fixed <strong>Global Cover</strong> (slide 1) for title, subtitle, tagline and background.
+                        </li>
+                        <li>
+                          Edit the fixed <strong>Global Last Page</strong> (always the final slide) for a closing message and optional branding.
+                        </li>
+                        <li>
+                          Add slides with <strong>+ Add</strong>.
+                        </li>
+                        <li>
+                          Fill in a <strong>title</strong> (required), subtitle, bullets, and optional image.
+                        </li>
+                        <li>
+                          Confirm layout in <strong>Preview</strong> (fit-to-width by default).
+                        </li>
+                        <li>
+                          Click <strong>Generate PPT</strong> to preview the full deck and download.
+                          <div className="kbdHint" style={{ marginTop: 6 }}>
+                            In preview: use ←/→ to navigate, Esc to close.
+                          </div>
+                        </li>
+                      </ol>
+
+                      <div className="divider" />
+
+                      <div className={`helper ${canGenerate ? "" : "helperError"}`} role="status" aria-live="polite">
+                        {helperText}
                       </div>
-                    </li>
-                  </ol>
-
-                  <div className="divider" />
-
-                  <div className={`helper ${canGenerate ? "" : "helperError"}`} role="status" aria-live="polite">
-                    {helperText}
-                  </div>
+                    </div>
+                  </section>
                 </div>
-              </section>
-            </div>
+              </div>
+            </section>
           </div>
         </div>
       </main>
