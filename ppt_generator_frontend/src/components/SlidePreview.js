@@ -19,6 +19,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
   const sf1 = skillFactory?.slides?.slide1;
   const sf2 = skillFactory?.slides?.slide2;
   const sf3 = skillFactory?.slides?.slide3;
+  const sf4 = skillFactory?.slides?.slide4;
 
   // Empty state:
   // - Normal slides require `slide`
@@ -426,6 +427,83 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                 className="sf3BottomBand"
                 aria-hidden="true"
                 style={{ background: (sf3?.bottomBandColor || "#2F78A8").toString() }}
+              />
+            </div>
+          </div>
+        ) : mode === "skillFactorySlide4" ? (
+          <div className="sf3PreviewFrame" aria-label="Skill Factory Slide 4 preview">
+            <div className="sf3PreviewBg">
+              <div className="sf3TitleRow">
+                <div className="sf3TitleText">{sf4?.title?.trim() ? sf4.title : "Feedback & Revised Rating"}</div>
+              </div>
+
+              {Array.isArray(sf4?.columns) && sf4.columns.length ? (
+                <div className="sf3TableWrap">
+                  <div className="sf3TableCard">
+                    <div className="sf3TableHeaderBand" aria-hidden="true" />
+                    <div className="sf3TableInner" role="table" aria-label="Feedback & revised rating table">
+                      <div className="sf3TableHead" role="rowgroup">
+                        <div
+                          className="sf3Row sf3RowHead"
+                          role="row"
+                          style={{
+                            gridTemplateColumns: `repeat(${sf4.columns.length}, minmax(0, 1fr))`
+                          }}
+                        >
+                          {(sf4.columns || []).map((c, idx) => (
+                            <div key={idx} className="sf3Cell sf3CellHead" role="columnheader">
+                              {(c || "").trim() || `Column ${idx + 1}`}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="sf3TableBody" role="rowgroup">
+                        {(Array.isArray(sf4?.rows) ? sf4.rows : []).length ? (
+                          (sf4.rows || []).slice(0, 6).map((r, idx) => {
+                            const row = Array.isArray(r) ? r : [];
+                            return (
+                              <div
+                                key={idx}
+                                className="sf3Row"
+                                role="row"
+                                style={{
+                                  gridTemplateColumns: `repeat(${sf4.columns.length}, minmax(0, 1fr))`
+                                }}
+                              >
+                                {sf4.columns.map((_c, colIdx) => (
+                                  <div key={colIdx} className="sf3Cell" role="cell">
+                                    {(row[colIdx] || "").toString().trim() || "—"}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="sf3Empty">
+                            <div className="badge">Table</div>
+                            <div style={{ marginTop: 8, fontSize: 12, color: "rgba(17,24,39,0.65)", lineHeight: 1.4 }}>
+                              Add rows in the editor to populate Slide 4.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="coverUploadEmpty" style={{ margin: "0 16px", flex: 1 }}>
+                  <div className="badge">Table</div>
+                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
+                    Add at least one column header in the editor to start building the table.
+                  </div>
+                </div>
+              )}
+
+              <div
+                className="sf3BottomBand"
+                aria-hidden="true"
+                style={{ background: (sf4?.bottomBandColor || "#2F78A8").toString() }}
               />
             </div>
           </div>

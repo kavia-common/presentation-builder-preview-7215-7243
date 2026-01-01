@@ -37,7 +37,8 @@ export default function SlideList({
           </div>
         </div>
         <p className="cardHint">
-          Order: Global Cover → Skill Factory Slide 1 → Skill Factory Slide 2 → Skill Factory Slide 3 → Content slides → Global Last Page.
+          Order: Global Cover → Skill Factory Slide 1 → Skill Factory Slide 2 → Skill Factory Slide 3 → Skill Factory Slide 4 → Content
+          slides → Global Last Page.
         </p>
       </div>
 
@@ -69,7 +70,7 @@ export default function SlideList({
             </div>
           </li>
 
-          {/* Skill Factories (Slide 1 + Slide 2 + Slide 3 per factory) */}
+          {/* Skill Factories (Slide 1 + Slide 2 + Slide 3 + Slide 4 per factory) */}
           {factories.length ? (
             factories.flatMap((f, idx) => {
               const title = f?.slides?.slide1?.factoryName?.trim() ? f.slides.slide1.factoryName : `Skill Factory ${idx + 1}`;
@@ -78,12 +79,14 @@ export default function SlideList({
               const sf1Id = `__skill_factory_slide1__:${f.id}`;
               const sf2Id = `__skill_factory_slide2__:${f.id}`;
               const sf3Id = `__skill_factory_slide3__:${f.id}`;
+              const sf4Id = `__skill_factory_slide4__:${f.id}`;
 
-              // cover=1; sf1 starts at 2; each factory adds 3 slides.
-              const baseSlideNo = 2 + idx * 3;
+              // cover=1; sf1 starts at 2; each factory adds 4 slides.
+              const baseSlideNo = 2 + idx * 4;
               const sf1Selected = selectedId === sf1Id;
               const sf2Selected = selectedId === sf2Id;
               const sf3Selected = selectedId === sf3Id;
+              const sf4Selected = selectedId === sf4Id;
 
               return [
                 (
@@ -165,6 +168,29 @@ export default function SlideList({
                       <div className="kbdHint">Table</div>
                     </div>
                   </li>
+                ),
+                (
+                  <li key={`${f.id}__sf4`} className={`slItem ${sf4Selected ? "slItemActive" : ""}`}>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(sf4Id)}
+                      className="btn btnGhost slItemButton"
+                      aria-current={sf4Selected ? "true" : "false"}
+                    >
+                      <div className="slMetaTop">
+                        <div style={{ minWidth: 0 }}>
+                          <div className="slKicker">Skill Factory – Slide 4</div>
+                          <div className="slTitle">Feedback & Revised Rating (table)</div>
+                          <div className="slSub">{title}</div>
+                        </div>
+                        <span className="slIndex">#{baseSlideNo + 3}</span>
+                      </div>
+                    </button>
+
+                    <div className="slItemFooter">
+                      <div className="kbdHint">Table</div>
+                    </div>
+                  </li>
                 )
               ];
             })
@@ -194,7 +220,7 @@ export default function SlideList({
           ) : (
             safeSlides.map((s, idx) => {
               const selected = s.id === selectedId;
-              const slideNumber = 2 + factories.length * 3 + idx; // cover=1; factories occupy 3 slides each
+              const slideNumber = 2 + factories.length * 4 + idx; // cover=1; factories occupy 4 slides each
               return (
                 <li key={s.id} className={`slItem ${selected ? "slItemActive" : ""}`}>
                   <button

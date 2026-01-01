@@ -817,6 +817,168 @@ async function addSkillFactorySlide3(pptx, factory) {
   }
 }
 
+async function addSkillFactorySlide4(pptx, factory) {
+  /**
+   * Skill Factory Slide 4: "Feedback & Revised Rating" table slide.
+   * Matches reference: title + table + bottom band (dark blue header row).
+   */
+  const SLIDE_W = 13.333;
+  const SLIDE_H = 7.5;
+
+  const s = pptx.addSlide();
+  s.background = { color: "FFFFFF" };
+
+  const sf4 = factory?.slides?.slide4 || {};
+  const title = (sf4.title || "").trim() || "Feedback & Revised Rating";
+
+  // Title (top-left)
+  s.addText(title, {
+    x: 0.6,
+    y: 0.45,
+    w: SLIDE_W - 1.2,
+    h: 0.4,
+    fontSize: 16,
+    bold: true,
+    color: "111827"
+  });
+
+  // Bottom band
+  const bandH = 1.05;
+  const bandColor = hexToPptxColor(sf4.bottomBandColor || "#2F78A8");
+  s.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: SLIDE_H - bandH,
+    w: SLIDE_W,
+    h: bandH,
+    fill: { color: bandColor },
+    line: { color: bandColor }
+  });
+
+  // Table container
+  const x0 = 0.6;
+  const y0 = 1.15;
+  const w0 = SLIDE_W - 1.2;
+  const h0 = SLIDE_H - bandH - y0 - 0.25;
+
+  // Outer border
+  s.addShape(pptx.ShapeType.rect, {
+    x: x0,
+    y: y0,
+    w: w0,
+    h: h0,
+    fill: { color: "FFFFFF" },
+    line: { color: "D1D5DB", width: 0.8 }
+  });
+
+  // Top grey band on table
+  s.addShape(pptx.ShapeType.rect, {
+    x: x0,
+    y: y0,
+    w: w0,
+    h: 0.12,
+    fill: { color: "CBD5E1" },
+    line: { color: "CBD5E1" }
+  });
+
+  const columns = Array.isArray(sf4.columns) ? sf4.columns : [];
+  const cols = columns.length;
+  if (!cols) return;
+
+  // For 6 columns, use weights tuned for feedback/rating layout. Else uniform.
+  const colWeights = cols === 6 ? [1.05, 1.15, 1.7, 3.2, 1.0, 1.6] : new Array(cols).fill(1);
+  const weightSum = colWeights.reduce((a, b) => a + b, 0);
+  const colWs = colWeights.map((w) => (w0 * w) / weightSum);
+
+  const headerH = 0.48;
+  const rowH = 0.62;
+  const padX = 0.10;
+
+  // Dark blue header background like reference
+  const headerY = y0 + 0.12;
+  s.addShape(pptx.ShapeType.rect, {
+    x: x0,
+    y: headerY,
+    w: w0,
+    h: headerH,
+    fill: { color: "1E3A8A" }, // dark blue
+    line: { color: "1E3A8A" }
+  });
+
+  // Header text
+  let cx = x0;
+  for (let i = 0; i < cols; i++) {
+    const label = (columns[i] || "").trim() || `Column ${i + 1}`;
+    s.addText(label, {
+      x: cx + padX,
+      y: headerY + 0.14,
+      w: Math.max(0, colWs[i] - padX * 2),
+      h: headerH - 0.18,
+      fontSize: 10,
+      bold: true,
+      color: "FFFFFF"
+    });
+    cx += colWs[i];
+  }
+
+  // Grid vertical lines
+  cx = x0;
+  for (let i = 0; i < cols - 1; i++) {
+    cx += colWs[i];
+    s.addShape(pptx.ShapeType.line, {
+      x: cx,
+      y: headerY,
+      w: 0,
+      h: h0 - 0.12,
+      line: { color: "E5E7EB", width: 0.6 }
+    });
+  }
+
+  const rows = Array.isArray(sf4.rows) ? sf4.rows : [];
+  const maxRows = Math.max(1, Math.floor((h0 - 0.12 - headerH) / rowH));
+  const slice = rows.slice(0, maxRows);
+
+  for (let r = 0; r < maxRows; r++) {
+    const row = Array.isArray(slice[r]) ? slice[r] : [];
+    const y = headerY + headerH + r * rowH;
+
+    if (r % 2 === 0) {
+      s.addShape(pptx.ShapeType.rect, {
+        x: x0,
+        y,
+        w: w0,
+        h: rowH,
+        fill: { color: "F9FAFB" },
+        line: { color: "FFFFFF", transparency: 100 }
+      });
+    }
+
+    s.addShape(pptx.ShapeType.line, {
+      x: x0,
+      y,
+      w: w0,
+      h: 0,
+      line: { color: "E5E7EB", width: 0.6 }
+    });
+
+    const values = new Array(cols).fill("").map((_, i) => (row[i] ?? "").toString());
+
+    cx = x0;
+    for (let c = 0; c < cols; c++) {
+      const t = (values[c] || "").trim() || "—";
+      s.addText(t, {
+        x: cx + padX,
+        y: y + 0.10,
+        w: Math.max(0, colWs[c] - padX * 2),
+        h: rowH - 0.12,
+        fontSize: cols === 6 && c === 3 ? 9 : 10,
+        color: "111827",
+        valign: "top"
+      });
+      cx += colWs[c];
+    }
+  }
+}
+
 async function addLastSlide(pptx, last) {
   // 13.333 x 7.5 inches for LAYOUT_WIDE
   const SLIDE_W = 13.333;
@@ -959,12 +1121,13 @@ export async function exportSlidesToPptx({ cover, last, skillFactories, slides, 
   // Slide 1: Global Cover (always)
   await addCoverSlide(pptx, cover);
 
-  // Skill Factory slides (Slide 1 then Slide 2 then Slide 3 per factory)
+  // Skill Factory slides (Slide 1 then Slide 2 then Slide 3 then Slide 4 per factory)
   const safeFactories = Array.isArray(skillFactories) ? skillFactories : [];
   for (const f of safeFactories) {
     await addSkillFactorySlide1(pptx, f);
     await addSkillFactorySlide2(pptx, f);
     await addSkillFactorySlide3(pptx, f);
+    await addSkillFactorySlide4(pptx, f);
   }
 
   // Normal content slides (0..n)

@@ -57,6 +57,35 @@ export const DEFAULT_SKILL_FACTORY = {
       ],
       // Visuals
       bottomBandColor: "#2F78A8"
+    },
+    /**
+     * Slide 4: "Feedback & Revised Rating" table slide.
+     * Matches reference: a title, a table with dark-blue header row, and a bottom blue band.
+     *
+     * IMPORTANT: rows are stored as string[][] (array-of-cells), so columns can be dynamic.
+     */
+    slide4: {
+      title: "Data Engineering : Feedback & Revised Rating",
+      columns: ["Domain", "Sub domain", "Capability", "Training sessions / feedback", "Rating/Scale", "Comments"],
+      rows: [
+        [
+          "RMG",
+          "RMG",
+          "Skills / Competency",
+          "Training sessions planned and feedback captured from participants.",
+          "Good",
+          "As per feedback"
+        ],
+        [
+          "RMG",
+          "RMG",
+          "Learning / Training",
+          "Sessions conducted; feedback consolidated and actions identified.",
+          "Good",
+          "As per feedback"
+        ]
+      ],
+      bottomBandColor: "#2F78A8"
     }
   }
 };
@@ -86,6 +115,12 @@ export function createDefaultSkillFactory() {
         columns: [...DEFAULT_SKILL_FACTORY.slides.slide3.columns],
         rows: DEFAULT_SKILL_FACTORY.slides.slide3.rows.map((r) => (Array.isArray(r) ? [...r] : [])),
         bottomBandColor: DEFAULT_SKILL_FACTORY.slides.slide3.bottomBandColor
+      },
+      slide4: {
+        title: DEFAULT_SKILL_FACTORY.slides.slide4.title,
+        columns: [...DEFAULT_SKILL_FACTORY.slides.slide4.columns],
+        rows: DEFAULT_SKILL_FACTORY.slides.slide4.rows.map((r) => (Array.isArray(r) ? [...r] : [])),
+        bottomBandColor: DEFAULT_SKILL_FACTORY.slides.slide4.bottomBandColor
       }
     }
   };
@@ -167,6 +202,30 @@ export function loadSkillFactoriesFromStorage() {
                   ];
                 })
               : base.slides.slide3.rows
+          },
+          slide4: {
+            ...base.slides.slide4,
+            ...(f?.slides?.slide4 || {}),
+            title: (f?.slides?.slide4?.title || base.slides.slide4.title || "").toString(),
+            bottomBandColor: (f?.slides?.slide4?.bottomBandColor || base.slides.slide4.bottomBandColor || "#2F78A8").toString(),
+            columns: Array.isArray(f?.slides?.slide4?.columns)
+              ? f.slides.slide4.columns.map((c) => (c || "").toString())
+              : base.slides.slide4.columns,
+            rows: Array.isArray(f?.slides?.slide4?.rows)
+              ? f.slides.slide4.rows.map((r) => {
+                  if (Array.isArray(r)) return r.map((c) => (c || "").toString());
+
+                  // Best-effort legacy object mapping
+                  return [
+                    (r?.domain || "").toString(),
+                    (r?.subDomain || "").toString(),
+                    (r?.capability || "").toString(),
+                    (r?.trainingSessions || r?.training || r?.feedback || "").toString(),
+                    (r?.rating || r?.scale || "").toString(),
+                    (r?.comments || "").toString()
+                  ];
+                })
+              : base.slides.slide4.rows
           }
         }
       };

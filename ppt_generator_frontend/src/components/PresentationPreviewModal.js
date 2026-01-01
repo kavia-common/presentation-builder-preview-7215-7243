@@ -41,7 +41,8 @@ export default function PresentationPreviewModal({
       ...safeFactories.flatMap((f) => [
         { id: `__sf1__${f.id}`, kind: "skillFactorySlide1", data: f },
         { id: `__sf2__${f.id}`, kind: "skillFactorySlide2", data: f },
-        { id: `__sf3__${f.id}`, kind: "skillFactorySlide3", data: f }
+        { id: `__sf3__${f.id}`, kind: "skillFactorySlide3", data: f },
+        { id: `__sf4__${f.id}`, kind: "skillFactorySlide4", data: f }
       ]),
       ...safeSlides.map((s) => ({ id: s.id, kind: "slide", data: s })),
       { id: "__last__", kind: "last", data: last }
@@ -123,7 +124,12 @@ export default function PresentationPreviewModal({
 
     if (active.kind === "cover") return items;
 
-    if (active.kind === "skillFactorySlide1" || active.kind === "skillFactorySlide2" || active.kind === "skillFactorySlide3") {
+    if (
+      active.kind === "skillFactorySlide1" ||
+      active.kind === "skillFactorySlide2" ||
+      active.kind === "skillFactorySlide3" ||
+      active.kind === "skillFactorySlide4"
+    ) {
       const f = active.data;
       const factoryIndex = Array.isArray(skillFactories) ? skillFactories.findIndex((x) => x?.id === f?.id) : -1;
       const displayFactoryIndex = factoryIndex >= 0 ? factoryIndex + 1 : 1;
@@ -131,7 +137,8 @@ export default function PresentationPreviewModal({
       const factoryName =
         f?.slides?.slide1?.factoryName?.trim() || f?.name?.trim?.() || `Skill Factory ${displayFactoryIndex}`;
 
-      const sfSlideNo = active.kind === "skillFactorySlide3" ? 3 : active.kind === "skillFactorySlide2" ? 2 : 1;
+      const sfSlideNo =
+        active.kind === "skillFactorySlide4" ? 4 : active.kind === "skillFactorySlide3" ? 3 : active.kind === "skillFactorySlide2" ? 2 : 1;
 
       items.push({ label: factoryName, title: factoryName });
       items.push({ label: `Slide ${sfSlideNo}`, title: `Skill Factory slide ${sfSlideNo}` });
@@ -225,7 +232,9 @@ export default function PresentationPreviewModal({
                       ? "Skill Factory – Slide 2"
                       : active?.kind === "skillFactorySlide3"
                         ? "Skill Factory – Slide 3"
-                        : "Content slide"}
+                        : active?.kind === "skillFactorySlide4"
+                          ? "Skill Factory – Slide 4"
+                          : "Content slide"}
             </div>
           </div>
 
@@ -297,7 +306,9 @@ export default function PresentationPreviewModal({
                           ? "Skill Factory – Slide 2"
                           : item.kind === "skillFactorySlide3"
                             ? "Skill Factory – Slide 3"
-                            : `Slide ${idx + 1}`;
+                            : item.kind === "skillFactorySlide4"
+                              ? "Skill Factory – Slide 4"
+                              : `Slide ${idx + 1}`;
 
                 return (
                   <button
@@ -354,13 +365,18 @@ export default function PresentationPreviewModal({
                               ? "skillFactorySlide2"
                               : active.kind === "skillFactorySlide3"
                                 ? "skillFactorySlide3"
-                                : "slide"
+                                : active.kind === "skillFactorySlide4"
+                                  ? "skillFactorySlide4"
+                                  : "slide"
                     }
                     cover={cover}
                     last={last}
                     slide={active.kind === "slide" ? active.data : null}
                     skillFactory={
-                      active.kind === "skillFactorySlide1" || active.kind === "skillFactorySlide2" || active.kind === "skillFactorySlide3"
+                      active.kind === "skillFactorySlide1" ||
+                      active.kind === "skillFactorySlide2" ||
+                      active.kind === "skillFactorySlide3" ||
+                      active.kind === "skillFactorySlide4"
                         ? active.data
                         : null
                     }

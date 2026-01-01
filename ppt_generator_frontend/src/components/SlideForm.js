@@ -87,9 +87,10 @@ export default function SlideForm({
   skillFactory,
   onSkillFactorySlide1Change,
   onSkillFactorySlide2Change,
-  onSkillFactorySlide3Change
+  onSkillFactorySlide3Change,
+  onSkillFactorySlide4Change
 }) {
-  /** Form used to edit the currently selected slide OR pinned Global Cover OR pinned Global Last Page OR Skill Factory Slide 1/2/3. */
+  /** Form used to edit the currently selected slide OR pinned Global Cover OR pinned Global Last Page OR Skill Factory Slide 1/2/3/4. */
 
   const titleId = useId();
   const subtitleId = useId();
@@ -120,6 +121,12 @@ export default function SlideForm({
   const sf3BandColorId = useId();
   const sf3ColSeedId = useId();
   const sf3RowSeedId = useId();
+
+  // Skill Factory Slide 4 editor ids MUST be defined unconditionally (rules-of-hooks).
+  const sf4TitleId = useId();
+  const sf4BandColorId = useId();
+  const sf4ColSeedId = useId();
+  const sf4RowSeedId = useId();
 
   const preset = useMemo(() => {
     const pid = slide?.theme?.backgroundPresetId || "surface";
@@ -698,20 +705,9 @@ export default function SlideForm({
 
             <BulletInputs title="Project highlights" hint="Key wins and progress for the sprint." listKey="highlights" seedId={sfHighlightsSeedId} defaultOpen />
 
-            <BulletInputs
-              title="Project lowlights"
-              hint="Risks, blockers, or issues."
-              listKey="lowlights"
-              seedId={sfLowlightsSeedId}
-              defaultOpen={false}
-            />
+            <BulletInputs title="Project lowlights" hint="Risks, blockers, or issues." listKey="lowlights" seedId={sfLowlightsSeedId} defaultOpen={false} />
 
-            <Section
-              title="Team members"
-              hint="Shown as a table on Slide 1."
-              defaultOpen={false}
-              actions={<span className="kbdHint">Add rows below</span>}
-            >
+            <Section title="Team members" hint="Shown as a table on Slide 1." defaultOpen={false} actions={<span className="kbdHint">Add rows below</span>}>
               <div style={{ overflowX: "auto" }}>
                 <table className="sfEditorTable" aria-label="Team members table">
                   <thead>
@@ -870,7 +866,6 @@ export default function SlideForm({
     }
 
     const metrics = Array.isArray(slide2.metricsImages) ? slide2.metricsImages : [];
-
     const update = (patch) => onSkillFactorySlide2Change?.({ ...slide2, ...patch });
 
     const onAddFiles = (filesList) => {
@@ -902,8 +897,6 @@ export default function SlideForm({
 
         const img = new Image();
         img.onload = () => {
-          // Patch the matching fileName slot from the end segment (best-effort).
-          // If there are duplicates, we patch the first matching "empty objectUrl" entry.
           const next = (Array.isArray(slide2.metricsImages) ? slide2.metricsImages : []).slice();
           const startIdx = base.length;
           const slot = next.findIndex((m, i) => i >= startIdx && m?.fileName === file.name && !m?.objectUrl);
@@ -969,12 +962,7 @@ export default function SlideForm({
 
         <div className="cardBody">
           <div className="formStack">
-            <Section
-              title="Upload"
-              hint="Local-only: used for preview and PPT export."
-              defaultOpen
-              actions={<span className="kbdHint">Use file picker</span>}
-            >
+            <Section title="Upload" hint="Local-only: used for preview and PPT export." defaultOpen actions={<span className="kbdHint">Use file picker</span>}>
               <div className="row">
                 <div>
                   <label className="label" htmlFor={sf2UploadId}>
@@ -1085,23 +1073,17 @@ export default function SlideForm({
     const cols = Array.isArray(slide3.columns) ? slide3.columns : [];
     const rows = Array.isArray(slide3.rows) ? slide3.rows : [];
 
-    // Keep existing behavior where an empty columns list shows a sensible default.
-    // HOWEVER: we also support a true "no headers" empty state by allowing the user to delete down to 0.
-    // If the stored list is empty, we treat it as empty (no Add Row) until user adds at least 1 column.
     const hasAnyHeader = cols.length > 0;
     const displayCols = cols;
 
     const addColumn = () => {
       const nextCols = [...displayCols, "New column"];
-      // Reset existing rows to the new header count (empty cells), keeping row count.
       update({ columns: nextCols, rows: rows.map(() => new Array(nextCols.length).fill("").map(() => "")) });
     };
 
     const removeColumn = (idx) => {
       const nextCols = [...displayCols];
       nextCols.splice(idx, 1);
-
-      // Reset all rows to match new headers (as requested).
       const nextRows = rows.map(() => new Array(nextCols.length).fill("").map(() => ""));
       update({ columns: nextCols, rows: nextRows });
     };
@@ -1109,8 +1091,6 @@ export default function SlideForm({
     const updateColumn = (idx, val) => {
       const nextCols = [...displayCols];
       nextCols[idx] = val;
-
-      // Any header change should reset ALL existing row data to empty cells.
       const nextRows = rows.map(() => new Array(nextCols.length).fill("").map(() => ""));
       update({ columns: nextCols, rows: nextRows });
     };
@@ -1131,7 +1111,6 @@ export default function SlideForm({
       const nextRows = rows.map((r, i) => {
         if (i !== rowIdx) return Array.isArray(r) ? r : new Array(colCount).fill("").map(() => "");
         const base = Array.isArray(r) ? [...r] : new Array(colCount).fill("").map(() => "");
-        // pad/trim defensively
         if (base.length < colCount) base.push(...new Array(colCount - base.length).fill("").map(() => ""));
         if (base.length > colCount) base.splice(colCount);
         base[colIdx] = value;
@@ -1296,6 +1275,229 @@ export default function SlideForm({
     );
   }
 
+  // ---- Skill Factory Slide 4 editor (table) ----
+  if (mode === "skillFactorySlide4") {
+    const slide4 = skillFactory?.slides?.slide4;
+
+    if (!slide4) {
+      return (
+        <section className="card" aria-label="Skill Factory Slide 4 editor">
+          <div className="cardHeader">
+            <h2 className="cardTitle">Skill Factory – Slide 4</h2>
+            <p className="cardHint">Skill Factory data not available.</p>
+          </div>
+          <div className="cardBody">
+            <div className="helper helperError">Unable to load Skill Factory Slide 4 state.</div>
+          </div>
+        </section>
+      );
+    }
+
+    const update = (patch) => onSkillFactorySlide4Change?.({ ...slide4, ...patch });
+
+    const cols = Array.isArray(slide4.columns) ? slide4.columns : [];
+    const rows = Array.isArray(slide4.rows) ? slide4.rows : [];
+
+    const hasAnyHeader = cols.length > 0;
+    const displayCols = cols;
+
+    const addColumn = () => {
+      const nextCols = [...displayCols, "New column"];
+      update({ columns: nextCols, rows: rows.map(() => new Array(nextCols.length).fill("").map(() => "")) });
+    };
+
+    const removeColumn = (idx) => {
+      const nextCols = [...displayCols];
+      nextCols.splice(idx, 1);
+      const nextRows = rows.map(() => new Array(nextCols.length).fill("").map(() => ""));
+      update({ columns: nextCols, rows: nextRows });
+    };
+
+    const updateColumn = (idx, val) => {
+      const nextCols = [...displayCols];
+      nextCols[idx] = val;
+      const nextRows = rows.map(() => new Array(nextCols.length).fill("").map(() => ""));
+      update({ columns: nextCols, rows: nextRows });
+    };
+
+    const addRow = () => {
+      if (!hasAnyHeader) return;
+      update({ rows: [...rows, new Array(displayCols.length).fill("").map(() => "")] });
+    };
+
+    const removeRow = (idx) => {
+      const next = [...rows];
+      next.splice(idx, 1);
+      update({ rows: next });
+    };
+
+    const updateCell = (rowIdx, colIdx, value) => {
+      const colCount = displayCols.length;
+      const nextRows = rows.map((r, i) => {
+        if (i !== rowIdx) return Array.isArray(r) ? r : new Array(colCount).fill("").map(() => "");
+        const base = Array.isArray(r) ? [...r] : new Array(colCount).fill("").map(() => "");
+        if (base.length < colCount) base.push(...new Array(colCount - base.length).fill("").map(() => ""));
+        if (base.length > colCount) base.splice(colCount);
+        base[colIdx] = value;
+        return base;
+      });
+      update({ rows: nextRows });
+    };
+
+    return (
+      <section className="card" aria-label="Skill Factory Slide 4 editor">
+        <div className="cardHeader">
+          <h2 className="cardTitle">Skill Factory – Slide 4</h2>
+          <p className="cardHint">Feedback & revised rating (matches reference: title + table + bottom band).</p>
+        </div>
+
+        <div className="cardBody">
+          <div className="formStack">
+            <Section title="Header" hint="Main title shown above the table." defaultOpen>
+              <div className="row">
+                <div>
+                  <label className="label" htmlFor={sf4TitleId}>
+                    Title
+                  </label>
+                  <input
+                    id={sf4TitleId}
+                    className="input"
+                    value={slide4.title || ""}
+                    onChange={(e) => update({ title: e.target.value })}
+                    placeholder="e.g., Data Engineering : Feedback & Revised Rating"
+                  />
+                </div>
+
+                <div>
+                  <label className="label" htmlFor={sf4BandColorId}>
+                    Bottom band color
+                  </label>
+                  <input
+                    id={sf4BandColorId}
+                    className="input"
+                    type="color"
+                    value={(slide4.bottomBandColor || "#2F78A8").toString()}
+                    onChange={(e) => update({ bottomBandColor: e.target.value })}
+                    aria-label="Bottom band color"
+                    style={{ padding: 6, height: 42 }}
+                  />
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Columns" hint="Add headers first. Changing headers resets all rows." defaultOpen actions={<span className="kbdHint">Edit below</span>}>
+              {!hasAnyHeader ? (
+                <EmptyState
+                  badge="Required"
+                  title="No table headers"
+                  description="Add at least one column header to start adding rows. When you change headers, existing rows reset to empty cells."
+                />
+              ) : null}
+
+              <div className="formList" style={{ marginTop: hasAnyHeader ? 0 : 10 }}>
+                {(displayCols || []).map((c, idx) => (
+                  <div key={`${sf4ColSeedId}_${idx}`} className="formListRow">
+                    <input
+                      className="input"
+                      value={c}
+                      onChange={(e) => updateColumn(idx, e.target.value)}
+                      placeholder={`Column ${idx + 1}`}
+                      aria-label={`Column ${idx + 1}`}
+                    />
+                    <button
+                      type="button"
+                      className="btn btnSmall btnGhost formRowAction"
+                      onClick={() => removeColumn(idx)}
+                      aria-label={`Remove column ${idx + 1}`}
+                      title="Remove"
+                    >
+                      −
+                    </button>
+                  </div>
+                ))}
+
+                <button type="button" className="btn btnSmall btnGhost" onClick={addColumn}>
+                  + Add column
+                </button>
+              </div>
+
+              <div className="helper">This slide is table-only. Export mirrors the same headers/rows.</div>
+            </Section>
+
+            <Section title="Rows" hint="Add 1–6 rows. Cells are editable inline." defaultOpen actions={<span className="kbdHint">Edit below</span>}>
+              {!hasAnyHeader ? (
+                <EmptyState badge="Required" title="Headers needed" description="Add at least one column header to enable rows." />
+              ) : !rows.length ? (
+                <EmptyState badge="Optional" title="No rows" description="Add a row to populate the table." />
+              ) : null}
+
+              {hasAnyHeader && rows.length ? (
+                <div style={{ overflowX: "auto" }}>
+                  <table className="sf3EditorTable" aria-label="Slide 4 dynamic table editor">
+                    <thead>
+                      <tr>
+                        {displayCols.map((c, idx) => (
+                          <th key={idx} style={{ minWidth: 160 }}>
+                            {(c || "").trim() || `Column ${idx + 1}`}
+                          </th>
+                        ))}
+                        <th aria-label="Actions" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, rowIdx) => {
+                        const safeRow = Array.isArray(r) ? r : new Array(displayCols.length).fill("").map(() => "");
+                        return (
+                          <tr key={`${sf4RowSeedId}_${rowIdx}`} className="sfRow">
+                            {displayCols.map((_c, colIdx) => (
+                              <td key={colIdx}>
+                                <input
+                                  className="input"
+                                  value={(safeRow[colIdx] || "").toString()}
+                                  onChange={(e) => updateCell(rowIdx, colIdx, e.target.value)}
+                                  placeholder="—"
+                                  aria-label={`Row ${rowIdx + 1} column ${colIdx + 1}`}
+                                />
+                              </td>
+                            ))}
+
+                            <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                              <button
+                                type="button"
+                                className="btn btnSmall btnGhost sfRowAction"
+                                onClick={() => removeRow(rowIdx)}
+                                aria-label={`Remove row ${rowIdx + 1}`}
+                                title="Remove row"
+                              >
+                                −
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button type="button" className="btn btnSmall btnGhost" onClick={addRow} disabled={!hasAnyHeader} aria-disabled={!hasAnyHeader}>
+                      + Add row
+                    </button>
+                  </div>
+
+                  <div className="helper">Previews update live. Export places Slide 4 right after Slide 3 for each factory.</div>
+                </div>
+              ) : (
+                <button type="button" className="btn btnSmall btnGhost" onClick={addRow} disabled={!hasAnyHeader} aria-disabled={!hasAnyHeader}>
+                  + Add row
+                </button>
+              )}
+            </Section>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   // ---- Normal slide editor ----
   if (!slide) {
     return (
@@ -1333,12 +1535,10 @@ export default function SlideForm({
   const onPickImage = async (file) => {
     if (!file) return;
 
-    // Revoke previous object URL if present to avoid memory leaks.
     if (slide.image?.objectUrl) URL.revokeObjectURL(slide.image.objectUrl);
 
     const objectUrl = URL.createObjectURL(file);
 
-    // Determine dimensions for export sizing.
     const img = new Image();
     img.onload = () => {
       update({
