@@ -717,3 +717,133 @@ a {
     overflow-y: hidden;
   }
 }
+
+/* =========================
+   Global Last Page (Ocean Pro)
+   Reference: centered THANK YOU closing slide
+   ========================= */
+:root {
+  --last-headline-size: 40px;
+  --last-tagline-size: 12px;
+  --last-subhead-size: 10px;
+}
+
+.lastPreviewFrame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(249, 250, 251, 1));
+  box-shadow: 0 20px 45px rgba(17, 24, 39, 0.08);
+}
+
+.lastPreviewBg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.lastPreviewHero {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: saturate(1.02) contrast(1.04);
+}
+
+.lastPreviewHeroFallback {
+  background:
+    linear-gradient(140deg, rgba(37, 99, 235, 0.05), rgba(255, 255, 255, 1)),
+    radial-gradient(900px 380px at 65% 35%, rgba(17, 24, 39, 0.10), rgba(255, 255, 255, 0));
+}
+
+.lastPreviewWash {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.92)),
+    radial-gradient(1200px 600px at 50% 10%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+.lastPreviewContent {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 26px;
+  text-align: center;
+}
+
+.lastLockup {
+  width: min(760px, 92%);
+  display: grid;
+  gap: 10px;
+  align-items: center;
+  justify-items: center;
+}
+
+.lastHeadline {
+  font-size: clamp(26px, 4.0vw, var(--last-headline-size));
+  font-weight: 300;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.lastTagline {
+  font-size: clamp(10px, 1.15vw, var(--last-tagline-size));
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: -2px;
+}
+
+.lastSubhead {
+  margin-top: 4px;
+  display: grid;
+  gap: 3px;
+  font-size: clamp(9px, 1.05vw, var(--last-subhead-size));
+  line-height: 1.25;
+  font-weight: 700;
+  opacity: 0.95;
+  white-space: pre-line;
+}
+
+.lastLogoWrap {
+  margin-top: 8px;
+  display: grid;
+  place-items: center;
+  width: 100%;
+}
+
+.lastLogo {
+  max-width: 220px;
+  max-height: 90px;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 22px rgba(17, 24, 39, 0.18));
+}
+
+.lastAccentRow {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 56px;
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.95;
+}
+
+.lastAccentSq {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.16);
+}
+
+.lastMicro {
+  margin-top: 8px;
+  font-size: 10px;
+}

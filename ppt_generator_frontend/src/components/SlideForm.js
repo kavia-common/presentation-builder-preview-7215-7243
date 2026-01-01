@@ -33,12 +33,19 @@ function ColorSwatch({ color, selected, onClick, label }) {
 }
 
 // PUBLIC_INTERFACE
-export default function SlideForm({ mode = "slide", slide, onChange, cover, onCoverChange }) {
-  /** Form used to edit the currently selected slide OR the pinned Global Cover. */
+export default function SlideForm({ mode = "slide", slide, onChange, cover, onCoverChange, last, onLastChange }) {
+  /** Form used to edit the currently selected slide OR pinned Global Cover OR pinned Global Last Page. */
   const titleId = useId();
   const subtitleId = useId();
   const taglineId = useId();
   const fileInputRef = useRef(null);
+
+  // Global Last Page editor ids/refs MUST be defined unconditionally (rules-of-hooks).
+  const lastHeadlineId = useId();
+  const lastSubheadId = useId();
+  const lastBrandId = useId();
+  const lastLogoInputRef = useRef(null);
+  const lastBgInputRef = useRef(null);
 
   const preset = useMemo(() => {
     const pid = slide?.theme?.backgroundPresetId || "surface";
@@ -218,6 +225,262 @@ export default function SlideForm({ mode = "slide", slide, onChange, cover, onCo
                   <div className="badge">Optional</div>
                   <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
                     Add a background photo to match the screenshot’s hero image.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ---- Global Last Page editor ----
+  if (mode === "last") {
+    if (!last) {
+      return (
+        <section className="card" aria-label="Global last page editor">
+          <div className="cardHeader">
+            <h2 className="cardTitle">Global Last Page</h2>
+            <p className="cardHint">Last page data not available.</p>
+          </div>
+          <div className="cardBody">
+            <div className="helper helperError">Unable to load global last page state.</div>
+          </div>
+        </section>
+      );
+    }
+
+    const updateLast = (patch) => onLastChange?.({ ...last, ...patch });
+
+    const onPickLastLogo = async (file) => {
+      if (!file) return;
+      if (last.logoImage?.objectUrl) URL.revokeObjectURL(last.logoImage.objectUrl);
+      const objectUrl = URL.createObjectURL(file);
+
+      const img = new Image();
+      img.onload = () => {
+        updateLast({
+          logoImage: { objectUrl, fileName: file.name, width: img.naturalWidth, height: img.naturalHeight }
+        });
+      };
+      img.onerror = () => {
+        updateLast({
+          logoImage: { objectUrl, fileName: file.name, width: 0, height: 0 }
+        });
+      };
+      img.src = objectUrl;
+    };
+
+    const clearLastLogo = () => {
+      if (last.logoImage?.objectUrl) URL.revokeObjectURL(last.logoImage.objectUrl);
+      if (lastLogoInputRef.current) lastLogoInputRef.current.value = "";
+      updateLast({ logoImage: { objectUrl: "", fileName: "", width: 0, height: 0 } });
+    };
+
+    const onPickLastBg = async (file) => {
+      if (!file) return;
+      if (last.backgroundImage?.objectUrl) URL.revokeObjectURL(last.backgroundImage.objectUrl);
+      const objectUrl = URL.createObjectURL(file);
+
+      const img = new Image();
+      img.onload = () => {
+        updateLast({
+          backgroundImage: { objectUrl, fileName: file.name, width: img.naturalWidth, height: img.naturalHeight }
+        });
+      };
+      img.onerror = () => {
+        updateLast({
+          backgroundImage: { objectUrl, fileName: file.name, width: 0, height: 0 }
+        });
+      };
+      img.src = objectUrl;
+    };
+
+    const clearLastBg = () => {
+      if (last.backgroundImage?.objectUrl) URL.revokeObjectURL(last.backgroundImage.objectUrl);
+      if (lastBgInputRef.current) lastBgInputRef.current.value = "";
+      updateLast({ backgroundImage: { objectUrl: "", fileName: "", width: 0, height: 0 } });
+    };
+
+    return (
+      <section className="card" aria-label="Global last page editor">
+        <div className="cardHeader">
+          <h2 className="cardTitle">Global Last Page</h2>
+          <p className="cardHint">This slide is always last and cannot be deleted or reordered.</p>
+        </div>
+
+        <div className="cardBody">
+          <div className="row">
+            <div>
+              <label className="label" htmlFor={lastHeadlineId}>
+                Headline
+              </label>
+              <input
+                id={lastHeadlineId}
+                className="input"
+                value={last.headline}
+                onChange={(e) => updateLast({ headline: e.target.value })}
+                placeholder="e.g., THANK YOU"
+              />
+              <div className="helper">Large centered closing headline.</div>
+            </div>
+
+            <div>
+              <label className="label" htmlFor={lastBrandId}>
+                Brand / tagline (line under headline)
+              </label>
+              <input
+                id={lastBrandId}
+                className="input"
+                value={last.tagline}
+                onChange={(e) => updateLast({ tagline: e.target.value })}
+                placeholder="e.g., TATA ELXSI"
+              />
+            </div>
+
+            <div>
+              <label className="label" htmlFor={lastSubheadId}>
+                Supporting text (multi-line)
+              </label>
+              <textarea
+                id={lastSubheadId}
+                className="textarea"
+                value={last.subhead}
+                onChange={(e) => updateLast({ subhead: e.target.value })}
+                placeholder={"e.g., FIND OUT MORE\nhttps://example.com"}
+              />
+              <div className="helper">Use line breaks for stacked text, like the reference image.</div>
+            </div>
+
+            <div className="divider" />
+
+            <div className="row2">
+              <div>
+                <div className="label">Background color</div>
+                <input
+                  className="input"
+                  type="color"
+                  value={last.backgroundColor || "#FFFFFF"}
+                  onChange={(e) => updateLast({ backgroundColor: e.target.value })}
+                  aria-label="Last page background color"
+                  style={{ padding: 6, height: 42 }}
+                />
+              </div>
+
+              <div>
+                <div className="label">Accent / brand color</div>
+                <input
+                  className="input"
+                  type="color"
+                  value={last.accentColor || "#2563EB"}
+                  onChange={(e) => updateLast({ accentColor: e.target.value })}
+                  aria-label="Last page accent color"
+                  style={{ padding: 6, height: 42 }}
+                />
+                <div className="helper">Used for the brand line and accent marks.</div>
+              </div>
+
+              <div>
+                <div className="label">Headline color</div>
+                <input
+                  className="input"
+                  type="color"
+                  value={last.headlineColor || "#111827"}
+                  onChange={(e) => updateLast({ headlineColor: e.target.value })}
+                  aria-label="Last page headline color"
+                  style={{ padding: 6, height: 42 }}
+                />
+              </div>
+
+              <div>
+                <div className="label">Supporting text color</div>
+                <input
+                  className="input"
+                  type="color"
+                  value={last.subheadColor || "#6B7280"}
+                  onChange={(e) => updateLast({ subheadColor: e.target.value })}
+                  aria-label="Last page supporting text color"
+                  style={{ padding: 6, height: 42 }}
+                />
+              </div>
+            </div>
+
+            <div className="divider" />
+
+            <div>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                <span className="label">Optional logo</span>
+                {last.logoImage?.objectUrl ? (
+                  <button type="button" className="btn btnSmall btnGhost" onClick={clearLastLogo}>
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+
+              <input
+                ref={lastLogoInputRef}
+                className="input"
+                type="file"
+                accept="image/*"
+                onChange={(e) => onPickLastLogo(e.target.files?.[0])}
+                aria-label="Upload logo for Global Last Page (local only)"
+              />
+              <div className="helper">Local-only: used for preview and PPT export.</div>
+
+              {last.logoImage?.objectUrl ? (
+                <div className="coverUploadPreview">
+                  <img
+                    src={last.logoImage.objectUrl}
+                    alt={last.logoImage.fileName ? `Logo: ${last.logoImage.fileName}` : "Logo"}
+                    className="coverUploadPreviewImg"
+                  />
+                </div>
+              ) : (
+                <div className="coverUploadEmpty">
+                  <div className="badge">Optional</div>
+                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
+                    Upload a logo if you want it centered below the text.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="divider" />
+
+            <div>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                <span className="label">Optional background image</span>
+                {last.backgroundImage?.objectUrl ? (
+                  <button type="button" className="btn btnSmall btnGhost" onClick={clearLastBg}>
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+
+              <input
+                ref={lastBgInputRef}
+                className="input"
+                type="file"
+                accept="image/*"
+                onChange={(e) => onPickLastBg(e.target.files?.[0])}
+                aria-label="Upload background image for Global Last Page (local only)"
+              />
+              <div className="helper">Local-only: used for preview and PPT export.</div>
+
+              {last.backgroundImage?.objectUrl ? (
+                <div className="coverUploadPreview">
+                  <img
+                    src={last.backgroundImage.objectUrl}
+                    alt={last.backgroundImage.fileName ? `Background: ${last.backgroundImage.fileName}` : "Background"}
+                    className="coverUploadPreviewImg"
+                  />
+                </div>
+              ) : (
+                <div className="coverUploadEmpty">
+                  <div className="badge">Optional</div>
+                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
+                    Add a subtle architectural/brand image like the reference.
                   </div>
                 </div>
               )}

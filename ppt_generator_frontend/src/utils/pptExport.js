@@ -189,16 +189,138 @@ async function addCoverSlide(pptx, cover) {
   });
 }
 
+async function addLastSlide(pptx, last) {
+  // 13.333 x 7.5 inches for LAYOUT_WIDE
+  const SLIDE_W = 13.333;
+  const SLIDE_H = 7.5;
+
+  const s = pptx.addSlide();
+
+  const bgColor = hexToPptxColor(last?.backgroundColor || "#FFFFFF");
+  s.background = { color: bgColor };
+
+  // Background image (full-bleed)
+  if (last?.backgroundImage?.objectUrl) {
+    try {
+      const dataUrl = await objectUrlToDataUrl(last.backgroundImage.objectUrl);
+      s.addImage({ data: dataUrl, x: 0, y: 0, w: SLIDE_W, h: SLIDE_H });
+    } catch (_e) {
+      // ignore; keep solid background
+    }
+  }
+
+  // Soft wash overlay to match bright screenshot
+  s.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: 0,
+    w: SLIDE_W,
+    h: SLIDE_H,
+    fill: { color: "FFFFFF", transparency: 25 },
+    line: { color: "FFFFFF", transparency: 100 }
+  });
+
+  const headline = (last?.headline || "").trim() || "THANK YOU";
+  const tagline = (last?.tagline || "").trim();
+  const subheadLines = splitLines(last?.subhead);
+
+  const headlineColor = hexToPptxColor(last?.headlineColor || "#111827");
+  const accentColor = hexToPptxColor(last?.accentColor || "#2563EB");
+  const taglineColor = hexToPptxColor(last?.taglineColor || last?.accentColor || "#2563EB");
+  const subheadColor = hexToPptxColor(last?.subheadColor || "#6B7280");
+
+  // Center lockup
+  // Headline (thin look approximated with smaller size and increased spacing)
+  s.addText(headline.toUpperCase(), {
+    x: 0.8,
+    y: 2.0,
+    w: SLIDE_W - 1.6,
+    h: 0.8,
+    fontSize: 40,
+    bold: false,
+    color: headlineColor,
+    align: "center"
+  });
+
+  // Brand line (tagline)
+  if (tagline) {
+    s.addText(tagline.toUpperCase(), {
+      x: 1.2,
+      y: 2.85,
+      w: SLIDE_W - 2.4,
+      h: 0.3,
+      fontSize: 12,
+      bold: true,
+      color: taglineColor,
+      align: "center"
+    });
+  }
+
+  // Supporting text
+  if (subheadLines.length) {
+    s.addText(subheadLines.join("\n"), {
+      x: 1.2,
+      y: 3.2,
+      w: SLIDE_W - 2.4,
+      h: 0.7,
+      fontSize: 10,
+      bold: true,
+      color: subheadColor,
+      align: "center"
+    });
+  }
+
+  // Optional logo centered below text
+  if (last?.logoImage?.objectUrl) {
+    try {
+      const dataUrl = await objectUrlToDataUrl(last.logoImage.objectUrl);
+      const box = { x: 5.3, y: 4.25, w: 2.7, h: 1.0 };
+      const fitted = fitSize({
+        srcW: last.logoImage.width || 800,
+        srcH: last.logoImage.height || 300,
+        maxW: box.w,
+        maxH: box.h
+      });
+      s.addImage({
+        data: dataUrl,
+        x: box.x + (box.w - fitted.w) / 2,
+        y: box.y + (box.h - fitted.h) / 2,
+        w: fitted.w,
+        h: fitted.h
+      });
+    } catch (_e) {
+      // If logo fails, don't block export.
+    }
+  }
+
+  // Accent squares near bottom center
+  const sqY = 6.25;
+  const startX = SLIDE_W / 2 - 0.45;
+  const gap = 0.16;
+  const size = 0.12;
+  const colors = [accentColor, "F59E0B", "111827", "9CA3AF"];
+  colors.forEach((c, i) => {
+    s.addShape(pptx.ShapeType.rect, {
+      x: startX + i * (size + gap),
+      y: sqY,
+      w: size,
+      h: size,
+      fill: { color: c },
+      line: { color: c }
+    });
+  });
+}
+
 // PUBLIC_INTERFACE
-export async function exportSlidesToPptx({ cover, slides, fileName }) {
+export async function exportSlidesToPptx({ cover, last, slides, fileName }) {
   /**
    * Generate a PPTX file from slide data and trigger download (client-side).
    * Notes:
    * - Compatible with pptxgenjs@3.11.0 (CRA-friendly); no node:* imports.
    * - Always includes Global Cover as slide 1.
-   * - Supports zero normal slides (exports a 1-slide deck).
+   * - Always appends Global Last Page as the final slide.
+   * - Supports zero normal slides (exports a 2-slide deck: Cover + Last).
    *
-   * @param {{cover: Object, slides: Array, fileName?: string}} payload - cover + slide objects from state.
+   * @param {{cover: Object, last: Object, slides: Array, fileName?: string}} payload - cover + slides + last.
    * @returns {Promise<void>}
    */
   const pptx = new PptxGenJS();
@@ -218,7 +340,7 @@ export async function exportSlidesToPptx({ cover, slides, fileName }) {
   // Slide 1: Global Cover (always)
   await addCoverSlide(pptx, cover);
 
-  // Remaining slides (0..n)
+  // Content slides (0..n)
   const safeSlides = Array.isArray(slides) ? slides : [];
   for (const slideData of safeSlides) {
     const s = pptx.addSlide();
@@ -308,6 +430,9 @@ export async function exportSlidesToPptx({ cover, slides, fileName }) {
       }
     }
   }
+
+  // Final slide: Global Last Page (always)
+  await addLastSlide(pptx, last);
 
   const derived =
     fileName ||

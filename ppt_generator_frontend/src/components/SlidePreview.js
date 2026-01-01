@@ -9,15 +9,15 @@ function normalizeMultiline(text) {
 }
 
 // PUBLIC_INTERFACE
-export default function SlidePreview({ mode = "slide", cover, slide, slideIndex, totalSlides }) {
-  /** Center preview "canvas" for the selected item (Global Cover or a regular slide). */
+export default function SlidePreview({ mode = "slide", cover, last, slide, slideIndex, totalSlides }) {
+  /** Center preview "canvas" for the selected item (Global Cover, Global Last Page, or a regular slide). */
   const preset = useMemo(() => {
     const pid = slide?.theme?.backgroundPresetId || "surface";
     return THEME_PRESETS[pid] || THEME_PRESETS.surface;
   }, [slide?.theme?.backgroundPresetId]);
 
   // Empty state
-  if (mode !== "cover" && !slide) {
+  if (mode !== "cover" && mode !== "last" && !slide) {
     return (
       <section className="card" aria-label="Slide preview">
         <div className="cardHeader">
@@ -110,6 +110,87 @@ export default function SlidePreview({ mode = "slide", cover, slide, slideIndex,
 
                   <div className="coverCornerAccent" aria-hidden="true" />
                 </div>
+              </div>
+            </div>
+          </div>
+        ) : mode === "last" ? (
+          <div className="lastPreviewFrame">
+            <div
+              className="lastPreviewBg"
+              style={{
+                backgroundColor: last?.backgroundColor || "#FFFFFF"
+              }}
+            >
+              {last?.backgroundImage?.objectUrl ? (
+                <div
+                  className="lastPreviewHero"
+                  style={{
+                    backgroundImage: `url(${last.backgroundImage.objectUrl})`
+                  }}
+                  aria-label="Last page background image"
+                />
+              ) : (
+                <div className="lastPreviewHero lastPreviewHeroFallback" aria-label="Last page background placeholder" />
+              )}
+
+              {/* Soft white wash to match the bright screenshot */}
+              <div className="lastPreviewWash" aria-hidden="true" />
+
+              {/* Centered lockup */}
+              <div className="lastPreviewContent">
+                <div className="lastLockup">
+                  <div
+                    className="lastHeadline"
+                    style={{ color: last?.headlineColor || "#111827" }}
+                  >
+                    {last?.headline?.trim() ? last.headline : "THANK YOU"}
+                  </div>
+
+                  {last?.tagline?.trim() ? (
+                    <div
+                      className="lastTagline"
+                      style={{ color: last?.taglineColor || last?.accentColor || "#2563EB" }}
+                    >
+                      {last.tagline}
+                    </div>
+                  ) : null}
+
+                  {normalizeMultiline(last?.subhead).length ? (
+                    <div className="lastSubhead" style={{ color: last?.subheadColor || "#6B7280" }}>
+                      {normalizeMultiline(last?.subhead).map((line, idx) => (
+                        <div key={idx}>{line}</div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {last?.logoImage?.objectUrl ? (
+                    <div className="lastLogoWrap">
+                      <img
+                        className="lastLogo"
+                        src={last.logoImage.objectUrl}
+                        alt={last.logoImage.fileName ? `Logo: ${last.logoImage.fileName}` : "Logo"}
+                      />
+                    </div>
+                  ) : null}
+
+                  <div className="lastMicro" style={{ color: "rgba(17,24,39,0.48)" }}>
+                    Ocean Professional • Global Last Page
+                  </div>
+                </div>
+              </div>
+
+              {/* Accent squares like the reference (small colorful blocks) */}
+              <div
+                className="lastAccentRow"
+                aria-hidden="true"
+                style={{
+                  ["--lastAccent"]: last?.accentColor || "#2563EB"
+                }}
+              >
+                <span className="lastAccentSq" style={{ background: last?.accentColor || "#2563EB" }} />
+                <span className="lastAccentSq" style={{ background: "#F59E0B" }} />
+                <span className="lastAccentSq" style={{ background: "#111827" }} />
+                <span className="lastAccentSq" style={{ background: "rgba(17,24,39,0.25)" }} />
               </div>
             </div>
           </div>

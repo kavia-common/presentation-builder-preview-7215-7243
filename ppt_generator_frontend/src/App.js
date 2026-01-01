@@ -11,8 +11,15 @@ import PresentationPreviewModal from "./components/PresentationPreviewModal";
 import { createEmptySlide, validateSlides } from "./utils/slideModel";
 import { exportSlidesToPptx } from "./utils/pptExport";
 import { createDefaultCover, loadCoverFromStorage, revokeCoverObjectUrl, saveCoverToStorage } from "./utils/coverModel";
+import {
+  createDefaultLastSlide,
+  loadLastSlideFromStorage,
+  revokeLastSlideObjectUrls,
+  saveLastSlideToStorage
+} from "./utils/lastSlideModel";
 
 const GLOBAL_COVER_ID = "__global_cover__";
+const GLOBAL_LAST_ID = "__global_last__";
 
 function makeTimestamp(d = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");
@@ -36,6 +43,7 @@ function safeFileBaseName(name) {
 function App() {
   /** Main UI entry point: slide editor + preview + export (frontend-only). */
   const [globalCoverSlide, setGlobalCoverSlide] = useState(() => loadCoverFromStorage() || createDefaultCover());
+  const [globalLastSlide, setGlobalLastSlide] = useState(() => loadLastSlideFromStorage() || createDefaultLastSlide());
   const [slides, setSlides] = useState(() => [createEmptySlide()]);
   const [selectedId, setSelectedId] = useState(() => GLOBAL_COVER_ID);
 
@@ -44,15 +52,23 @@ function App() {
   const [toast, setToast] = useState({ open: false, variant: "info", title: "", message: "", autoHideMs: 0 });
 
   const isCoverSelected = selectedId === GLOBAL_COVER_ID;
+  const isLastSelected = selectedId === GLOBAL_LAST_ID;
 
   // Persist cover changes (excluding object URL).
   useEffect(() => {
     saveCoverToStorage(globalCoverSlide);
   }, [globalCoverSlide]);
 
+  // Persist Global Last Page changes (excluding object URLs).
+  useEffect(() => {
+    saveLastSlideToStorage(globalLastSlide);
+  }, [globalLastSlide]);
+
   // Keep selection valid if slides change (e.g., delete).
   useEffect(() => {
-    if (isCoverSelected) return;
+    if (isCoverSelected || isLastSelected) return;
+
+    // If selection points to a deleted slide, reset to cover.
     if (slides.length === 0) {
       setSelectedId(GLOBAL_COVER_ID);
       return;
@@ -60,7 +76,7 @@ function App() {
     if (!selectedId || !slides.some((s) => s.id === selectedId)) {
       setSelectedId(GLOBAL_COVER_ID);
     }
-  }, [slides, selectedId, isCoverSelected]);
+  }, [slides, selectedId, isCoverSelected, isLastSelected]);
 
   // Cleanup: revoke object URLs on unmount.
   useEffect(() => {
@@ -69,6 +85,7 @@ function App() {
         if (s.image?.objectUrl) URL.revokeObjectURL(s.image.objectUrl);
       });
       revokeCoverObjectUrl(globalCoverSlide);
+      revokeLastSlideObjectUrls(globalLastSlide);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -82,7 +99,7 @@ function App() {
   const canGenerate = slides.length === 0 ? true : validation.valid;
 
   const helperText = useMemo(() => {
-    if (slides.length === 0) return "No content slides. Export will include only the Global Cover.";
+    if (slides.length === 0) return "No content slides. Export will include Global Cover + Global Last Page.";
     if (!validation.valid) {
       const nums = validation.invalidIndices.map((i) => i + 2).join(", ");
       // +2 because slide #1 is the global cover
@@ -144,7 +161,7 @@ function App() {
 
     try {
       // Ensure we await the promise and catch errors reliably.
-      await exportSlidesToPptx({ cover: globalCoverSlide, slides, fileName });
+      await exportSlidesToPptx({ cover: globalCoverSlide, last: globalLastSlide, slides, fileName });
 
       setToast({
         open: true,
@@ -178,23 +195,39 @@ function App() {
   };
 
   const previewProps = useMemo(() => {
+    const totalSlides = slides.length + 2; // cover + normal slides + last
+
     if (isCoverSelected) {
       return {
         mode: "cover",
         cover: globalCoverSlide,
+        last: globalLastSlide,
         slide: null,
         slideIndex: 0,
-        totalSlides: slides.length + 1
+        totalSlides
       };
     }
+
+    if (isLastSelected) {
+      return {
+        mode: "last",
+        cover: globalCoverSlide,
+        last: globalLastSlide,
+        slide: null,
+        slideIndex: totalSlides - 1,
+        totalSlides
+      };
+    }
+
     return {
       mode: "slide",
       cover: globalCoverSlide,
+      last: globalLastSlide,
       slide: selectedSlide,
       slideIndex: Math.max(0, selectedIndex) + 1, // +1 because cover is slide 1
-      totalSlides: slides.length + 1
+      totalSlides
     };
-  }, [isCoverSelected, globalCoverSlide, slides.length, selectedSlide, selectedIndex]);
+  }, [isCoverSelected, isLastSelected, globalCoverSlide, globalLastSlide, slides.length, selectedSlide, selectedIndex]);
 
   const generateDisabled = !canGenerate || isGenerating;
 
@@ -206,6 +239,7 @@ function App() {
         open={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         cover={globalCoverSlide}
+        last={globalLastSlide}
         slides={slides}
         onDownload={onDownloadFromPreview}
         canDownload={canGenerate}
@@ -258,6 +292,7 @@ function App() {
           <div className="grid">
             <SlideList
               globalCover={{ id: GLOBAL_COVER_ID, data: globalCoverSlide }}
+              globalLast={{ id: GLOBAL_LAST_ID, data: globalLastSlide }}
               slides={slides}
               selectedId={selectedId}
               onSelect={setSelectedId}
@@ -271,11 +306,13 @@ function App() {
 
             <div style={{ display: "grid", gap: 16 }}>
               <SlideForm
-                mode={isCoverSelected ? "cover" : "slide"}
-                slide={isCoverSelected ? null : selectedSlide}
+                mode={isCoverSelected ? "cover" : isLastSelected ? "last" : "slide"}
+                slide={isCoverSelected || isLastSelected ? null : selectedSlide}
                 cover={globalCoverSlide}
+                last={globalLastSlide}
                 onChange={updateSelected}
                 onCoverChange={updateCover}
+                onLastChange={setGlobalLastSlide}
               />
 
               <section className="card" aria-label="How to use">
@@ -286,6 +323,7 @@ function App() {
                 <div className="cardBody">
                   <ol style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8, color: "#111827", fontSize: 13, lineHeight: 1.5 }}>
                     <li>Edit the fixed <strong>Global Cover</strong> (slide 1) for title, subtitle, tagline and background.</li>
+                    <li>Edit the fixed <strong>Global Last Page</strong> (always the final slide) for a closing message and optional branding.</li>
                     <li>Add slides with <strong>+ Add</strong>.</li>
                     <li>Fill in a <strong>title</strong> (required), subtitle, bullets, and optional image.</li>
                     <li>Pick theme colors and confirm in <strong>Preview</strong>.</li>
