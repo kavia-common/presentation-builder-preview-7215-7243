@@ -22,9 +22,6 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
   // - Normal slides require `slide`
   // - Cover/Last are driven by `cover`/`last`
   // - Skill Factory Slide 1 is driven by `skillFactory`
-  //
-  // Previously this guard checked `!slide` for *all* non-cover/non-last modes,
-  // which incorrectly blocked rendering of Skill Factory Slide 1 (it intentionally has no `slide`).
   const needsNormalSlide = mode === "slide";
   if (needsNormalSlide && !slide) {
     return (
@@ -34,16 +31,9 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
           <p className="cardHint">Nothing selected yet.</p>
         </div>
         <div className="cardBody">
-          <div
-            style={{
-              borderRadius: 16,
-              border: "1px dashed rgba(17,24,39,0.20)",
-              padding: 18,
-              background: "rgba(37,99,235,0.04)"
-            }}
-          >
+          <div className="previewEmpty">
             <div className="badge">Preview</div>
-            <p style={{ margin: "10px 0 0 0", fontSize: 13, color: "#6b7280", lineHeight: 1.5 }}>
+            <p style={{ margin: "10px 0 0 0", fontSize: 13, color: "var(--ocean-muted)", lineHeight: 1.5 }}>
               Select a slide from the left to see a live preview here.
             </p>
           </div>
@@ -60,7 +50,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
   return (
     <section className="card" aria-label="Slide preview">
       <div className="cardHeader">
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+        <div className="previewHeaderRow">
           <h2 className="cardTitle">{headerLabel}</h2>
           <span className="kbdHint" aria-label="Slide position">
             Slide {safeSlideIndex + 1} of {safeTotalSlides}
@@ -119,8 +109,6 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                     <div className="coverBrandCircle">TATA</div>
                     <div className="coverBrandText">TATA</div>
                   </div>
-
-                  <div className="coverCornerAccent" aria-hidden="true" />
                 </div>
               </div>
             </div>
@@ -145,10 +133,8 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                 <div className="lastPreviewHero lastPreviewHeroFallback" aria-label="Last page background placeholder" />
               )}
 
-              {/* Soft white wash to match the bright screenshot */}
               <div className="lastPreviewWash" aria-hidden="true" />
 
-              {/* Centered lockup */}
               <div className="lastPreviewContent">
                 <div className="lastLockup">
                   <div className="lastHeadline" style={{ color: last?.headlineColor || "#111827" }}>
@@ -185,14 +171,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                 </div>
               </div>
 
-              {/* Accent squares like the reference (small colorful blocks) */}
-              <div
-                className="lastAccentRow"
-                aria-hidden="true"
-                style={{
-                  "--lastAccent": last?.accentColor || "#2563EB"
-                }}
-              >
+              <div className="lastAccentRow" aria-hidden="true">
                 <span className="lastAccentSq" style={{ background: last?.accentColor || "#2563EB" }} />
                 <span className="lastAccentSq" style={{ background: "#F59E0B" }} />
                 <span className="lastAccentSq" style={{ background: "#111827" }} />
@@ -227,7 +206,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                           </li>
                         ) : null
                       )}
-                      {((sf1?.highlights || []).map((t) => (t || "").trim()).filter(Boolean).length === 0) ? (
+                      {(sf1?.highlights || []).map((t) => (t || "").trim()).filter(Boolean).length === 0 ? (
                         <li className="sfListItem sfListMuted">Add highlights in the editor.</li>
                       ) : null}
                     </ul>
@@ -246,7 +225,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                           </li>
                         ) : null
                       )}
-                      {((sf1?.lowlights || []).map((t) => (t || "").trim()).filter(Boolean).length === 0) ? (
+                      {(sf1?.lowlights || []).map((t) => (t || "").trim()).filter(Boolean).length === 0 ? (
                         <li className="sfListItem sfListMuted">Add lowlights in the editor.</li>
                       ) : null}
                     </ul>
@@ -273,7 +252,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                               <td>{m?.role?.trim() ? m.role : "—"}</td>
                             </tr>
                           ))}
-                          {((sf1?.teamMembers || []).length === 0) ? (
+                          {(sf1?.teamMembers || []).length === 0 ? (
                             <tr>
                               <td colSpan={2} className="sfTableEmpty">
                                 Add team members in the editor.
@@ -300,7 +279,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                           </li>
                         ) : null
                       )}
-                      {((sf1?.prevWeekActivities || []).map((t) => (t || "").trim()).filter(Boolean).length === 0) ? (
+                      {(sf1?.prevWeekActivities || []).map((t) => (t || "").trim()).filter(Boolean).length === 0 ? (
                         <li className="sfListItem sfListMuted">Add previous week activities.</li>
                       ) : null}
                     </ul>
@@ -319,7 +298,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                           </li>
                         ) : null
                       )}
-                      {((sf1?.currentWeekActivities || []).map((t) => (t || "").trim()).filter(Boolean).length === 0) ? (
+                      {(sf1?.currentWeekActivities || []).map((t) => (t || "").trim()).filter(Boolean).length === 0 ? (
                         <li className="sfListItem sfListMuted">Add current week activities.</li>
                       ) : null}
                     </ul>
@@ -334,56 +313,35 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
             </div>
           </div>
         ) : (
-          // Normal slide preview (existing)
-          <div
-            style={{
-              width: "100%",
-              aspectRatio: "16 / 9",
-              borderRadius: 18,
-              border: "1px solid rgba(17,24,39,0.12)",
-              overflow: "hidden",
-              background: preset.previewGradient,
-              position: "relative",
-              boxShadow: "0 20px 45px rgba(17,24,39,0.08)",
-              transition: "transform 200ms ease, box-shadow 200ms ease"
-            }}
-          >
-            {/* Inner surface mimicking slide background */}
+          // Normal slide preview (minimal canvas; preserve layout/behavior)
+          <div className="previewCanvas" style={{ background: preset.previewGradient, position: "relative" }}>
             <div
               style={{
                 position: "absolute",
                 inset: 0,
                 background: preset.background,
-                opacity: 0.92
+                opacity: 0.94
               }}
             />
 
             <div
+              className="previewSlideGrid"
               style={{
-                position: "absolute",
-                inset: 0,
-                padding: 24,
-                color: slide.theme?.textColor || preset.text,
-                display: "grid",
-                gridTemplateColumns: "1.25fr 0.75fr",
-                gap: 18
+                color: slide.theme?.textColor || preset.text
               }}
             >
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
-                  {slide.title?.trim() ? slide.title : "Untitled slide"}
-                </div>
-                {slide.subtitle?.trim() ? (
-                  <div style={{ marginTop: 10, fontSize: 15, opacity: 0.9, lineHeight: 1.3 }}>{slide.subtitle}</div>
-                ) : null}
+                <div className="previewSlideTitle">{slide.title?.trim() ? slide.title : "Untitled slide"}</div>
 
-                <ul style={{ marginTop: 16, paddingLeft: 18, display: "grid", gap: 8 }}>
+                {slide.subtitle?.trim() ? <div className="previewSlideSubtitle">{slide.subtitle}</div> : null}
+
+                <ul className="previewBullets">
                   {(slide.bullets || [])
                     .map((b) => (b || "").trim())
                     .filter(Boolean)
                     .slice(0, 8)
                     .map((b, idx) => (
-                      <li key={idx} style={{ fontSize: 14, lineHeight: 1.35, opacity: 0.95 }}>
+                      <li key={idx} className="previewBullet">
                         {b}
                       </li>
                     ))}
@@ -396,14 +354,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
 
               <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
                 {slide.image?.objectUrl ? (
-                  <div
-                    style={{
-                      borderRadius: 14,
-                      border: "1px solid rgba(17,24,39,0.12)",
-                      overflow: "hidden",
-                      background: "rgba(17,24,39,0.04)"
-                    }}
-                  >
+                  <div className="previewPanel">
                     <img
                       src={slide.image.objectUrl}
                       alt={slide.image.fileName ? `Slide image: ${slide.image.fileName}` : "Slide image"}
@@ -411,54 +362,28 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                     />
                   </div>
                 ) : (
-                  <div
-                    style={{
-                      borderRadius: 14,
-                      border: "1px dashed rgba(17,24,39,0.18)",
-                      padding: 14,
-                      background: "rgba(37,99,235,0.06)"
-                    }}
-                  >
-                    <div className="badge">Optional</div>
-                    <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
-                      Add an image in the editor to show it here.
+                  <div className="previewPanel">
+                    <div className="previewPanelBody">
+                      <div className="badge">Optional</div>
+                      <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
+                        Add an image in the editor to show it here.
+                      </div>
                     </div>
                   </div>
                 )}
 
-                <div
-                  style={{
-                    borderRadius: 14,
-                    border: "1px solid rgba(17,24,39,0.10)",
-                    padding: 12,
-                    background: "rgba(255,255,255,0.55)",
-                    color: "#111827"
-                  }}
-                >
-                  <div style={{ fontSize: 12, fontWeight: 800 }}>Theme</div>
-                  <div style={{ marginTop: 6, fontSize: 12, color: "#6b7280", lineHeight: 1.4 }}>
-                    Background: <strong>{preset.label}</strong>
-                    <br />
-                    Text: <strong>{slide.theme?.textColor || preset.text}</strong>
+                <div className="previewPanel">
+                  <div className="previewPanelBody">
+                    <div className="previewSmallLabel">Theme</div>
+                    <div className="previewThemeMeta">
+                      Background: <strong>{preset.label}</strong>
+                      <br />
+                      Text: <strong>{slide.theme?.textColor || preset.text}</strong>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* Small corner mark */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                right: 14,
-                bottom: 14,
-                width: 12,
-                height: 12,
-                borderRadius: 999,
-                background: "rgba(245,158,11,0.95)",
-                boxShadow: "0 6px 20px rgba(245,158,11,0.25)"
-              }}
-            />
           </div>
         )}
       </div>

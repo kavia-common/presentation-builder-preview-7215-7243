@@ -194,7 +194,6 @@ export default function PresentationPreviewModal({
                 value={zoomMode}
                 onChange={(e) => setZoomMode(e.target.value)}
                 aria-label="Zoom control"
-                style={{ padding: "8px 10px", borderRadius: 10, minWidth: 110 }}
               >
                 <option value="fit">Fit</option>
                 <option value="100">100%</option>
@@ -205,7 +204,7 @@ export default function PresentationPreviewModal({
 
             <button
               type="button"
-              className="btn btnSecondary"
+              className="btn"
               onClick={() => onDownload?.()}
               disabled={!canDownload || isDownloading}
               aria-disabled={!canDownload || isDownloading}
@@ -218,7 +217,6 @@ export default function PresentationPreviewModal({
                       ? `Download as ${fileNameHint}`
                       : "Download PPTX"
               }
-              style={{ paddingLeft: 14, paddingRight: 14 }}
             >
               {isDownloading ? "Generating…" : "Download PPT"}
             </button>

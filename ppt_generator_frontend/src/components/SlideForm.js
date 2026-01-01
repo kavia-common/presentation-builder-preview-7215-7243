@@ -13,8 +13,7 @@ function ColorSwatch({ color, selected, onClick, label }) {
       style={{
         padding: 6,
         borderRadius: 999,
-        borderColor: selected ? "rgba(37,99,235,0.55)" : "rgba(17,24,39,0.12)",
-        boxShadow: selected ? "0 0 0 3px rgba(37,99,235,0.20)" : "none"
+        borderColor: selected ? "rgba(37,99,235,0.45)" : "var(--ocean-border)"
       }}
     >
       <span
@@ -25,7 +24,7 @@ function ColorSwatch({ color, selected, onClick, label }) {
           height: 18,
           borderRadius: 999,
           background: color,
-          border: "1px solid rgba(17,24,39,0.12)"
+          border: "1px solid var(--ocean-border)"
         }}
       />
     </button>
@@ -605,7 +604,7 @@ export default function SlideForm({
               <div>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
                   <span className="label">Project highlights</span>
-                  <button type="button" className="btn btnSmall btnSecondary" onClick={() => addBulletListItem("highlights")}>
+                  <button type="button" className="btn btnSmall" onClick={() => addBulletListItem("highlights")}>
                     + Add
                   </button>
                 </div>
@@ -637,7 +636,7 @@ export default function SlideForm({
               <div>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
                   <span className="label">Project lowlights</span>
-                  <button type="button" className="btn btnSmall btnSecondary" onClick={() => addBulletListItem("lowlights")}>
+                  <button type="button" className="btn btnSmall" onClick={() => addBulletListItem("lowlights")}>
                     + Add
                   </button>
                 </div>
@@ -672,7 +671,7 @@ export default function SlideForm({
             <div>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
                 <span className="label">Team members</span>
-                <button type="button" className="btn btnSmall btnSecondary" onClick={addTeamMember}>
+                <button type="button" className="btn btnSmall" onClick={addTeamMember}>
                   + Add row
                 </button>
               </div>
@@ -733,7 +732,7 @@ export default function SlideForm({
               <div>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
                   <span className="label">Key activities completed (previous week)</span>
-                  <button type="button" className="btn btnSmall btnSecondary" onClick={() => addBulletListItem("prevWeekActivities")}>
+                  <button type="button" className="btn btnSmall" onClick={() => addBulletListItem("prevWeekActivities")}>
                     + Add
                   </button>
                 </div>
@@ -765,7 +764,7 @@ export default function SlideForm({
               <div>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
                   <span className="label">Key activities planned (current week)</span>
-                  <button type="button" className="btn btnSmall btnSecondary" onClick={() => addBulletListItem("currentWeekActivities")}>
+                  <button type="button" className="btn btnSmall" onClick={() => addBulletListItem("currentWeekActivities")}>
                     + Add
                   </button>
                 </div>
@@ -921,7 +920,7 @@ export default function SlideForm({
           <div>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
               <span className="label">Bullet points</span>
-              <button type="button" className="btn btnSmall btnSecondary" onClick={addBullet}>
+              <button type="button" className="btn btnSmall" onClick={addBullet}>
                 + Add bullet
               </button>
             </div>

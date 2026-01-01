@@ -20,7 +20,6 @@ export default function SlideList({
   const lastSelected = selectedId === globalLast?.id;
 
   const factories = Array.isArray(skillFactories) ? skillFactories : [];
-  // Defensive: SlideList must never crash if slides prop is missing.
   const safeSlides = Array.isArray(slides) ? slides : [];
   const factorySelectedId = selectedId?.startsWith("__skill_factory_slide1__:") ? selectedId.split(":")[1] : null;
 
@@ -33,7 +32,7 @@ export default function SlideList({
             <button className="btn btnSmall btnGhost" onClick={onAddSkillFactory} type="button" title="Add Skill Factory group">
               + Skill Factory
             </button>
-            <button className="btn btnSmall btnSecondary" onClick={onAdd} type="button">
+            <button className="btn btnSmall" onClick={onAdd} type="button">
               + Add
             </button>
           </div>
@@ -44,68 +43,26 @@ export default function SlideList({
       </div>
 
       <div className="cardBody">
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 }}>
+        <ul className="slList">
           {/* Global Cover (pinned) */}
-          <li
-            style={{
-              border: `1px solid ${coverSelected ? "rgba(37,99,235,0.65)" : "rgba(37,99,235,0.22)"}`,
-              borderRadius: 14,
-              padding: 10,
-              background: coverSelected ? "rgba(37,99,235,0.10)" : "rgba(37,99,235,0.05)",
-              boxShadow: coverSelected ? "0 10px 22px rgba(37,99,235,0.14)" : "none",
-              position: "relative"
-            }}
-          >
-            <div
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                borderRadius: 14,
-                background:
-                  "linear-gradient(135deg, rgba(37,99,235,0.08), rgba(245,158,11,0.08), rgba(255,255,255,0))",
-                pointerEvents: "none"
-              }}
-            />
+          <li className={`slItem slItemPinned ${coverSelected ? "slItemActive" : ""}`}>
             <button
               type="button"
               onClick={() => onSelect(globalCover.id)}
-              className="btn btnGhost"
-              style={{
-                width: "100%",
-                textAlign: "left",
-                padding: 10,
-                borderRadius: 12,
-                position: "relative"
-              }}
+              className="btn btnGhost slItemButton"
               aria-current={coverSelected ? "true" : "false"}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div className="slMetaTop">
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.03em", textTransform: "uppercase", color: "#1d4ed8" }}>
-                    Global Cover
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 900,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      marginTop: 2
-                    }}
-                  >
-                    {globalCover?.data?.title?.trim() ? globalCover.data.title : "Cover title"}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
-                    {globalCover?.data?.subtitle?.trim() ? globalCover.data.subtitle : "Cover subtitle"}
-                  </div>
+                  <div className="slKicker">Global Cover</div>
+                  <div className="slTitle">{globalCover?.data?.title?.trim() ? globalCover.data.title : "Cover title"}</div>
+                  <div className="slSub">{globalCover?.data?.subtitle?.trim() ? globalCover.data.subtitle : "Cover subtitle"}</div>
                 </div>
-                <span style={{ fontSize: 12, color: "#6b7280" }}>#1</span>
+                <span className="slIndex">#1</span>
               </div>
             </button>
 
-            <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 8, position: "relative" }}>
+            <div className="slItemFooter">
               <div className="badge" title="Pinned cover slide">
                 Pinned • Non-removable
               </div>
@@ -122,52 +79,24 @@ export default function SlideList({
               const sprint = f?.slides?.slide1?.sprintLabel?.trim() ? f.slides.slide1.sprintLabel : "Sprint label";
 
               return (
-                <li
-                  key={f.id}
-                  style={{
-                    border: `1px solid ${selected ? "rgba(37,99,235,0.45)" : "rgba(17,24,39,0.12)"}`,
-                    borderRadius: 14,
-                    padding: 10,
-                    background: selected ? "rgba(37,99,235,0.06)" : "#fff",
-                    boxShadow: selected ? "0 8px 18px rgba(37,99,235,0.10)" : "none"
-                  }}
-                >
+                <li key={f.id} className={`slItem ${selected ? "slItemActive" : ""}`}>
                   <button
                     type="button"
                     onClick={() => onSelect(`__skill_factory_slide1__:${f.id}`)}
-                    className="btn btnGhost"
-                    style={{
-                      width: "100%",
-                      textAlign: "left",
-                      padding: 10,
-                      borderRadius: 12
-                    }}
+                    className="btn btnGhost slItemButton"
                     aria-current={selected ? "true" : "false"}
                   >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <div className="slMetaTop">
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.03em", textTransform: "uppercase", color: "#1d4ed8" }}>
-                          Skill Factory – Slide 1
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 900,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            marginTop: 2
-                          }}
-                        >
-                          {title}
-                        </div>
-                        <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{sprint}</div>
+                        <div className="slKicker">Skill Factory – Slide 1</div>
+                        <div className="slTitle">{title}</div>
+                        <div className="slSub">{sprint}</div>
                       </div>
-                      <span style={{ fontSize: 12, color: "#6b7280" }}>#{slideNumber}</span>
+                      <span className="slIndex">#{slideNumber}</span>
                     </div>
                   </button>
 
-                  <div style={{ display: "flex", gap: 8, justifyContent: "space-between", paddingTop: 8 }}>
+                  <div className="slItemFooter">
                     <div className="badge" title="Skill Factory group">
                       Group
                     </div>
@@ -185,16 +114,9 @@ export default function SlideList({
               );
             })
           ) : (
-            <li
-              style={{
-                border: "1px dashed rgba(17,24,39,0.20)",
-                borderRadius: 14,
-                padding: 14,
-                background: "rgba(37,99,235,0.04)"
-              }}
-            >
+            <li className="slEmpty">
               <div className="badge">Skill Factory</div>
-              <p style={{ margin: "10px 0 0 0", fontSize: 13, lineHeight: 1.5, color: "#111827" }}>
+              <p style={{ margin: "10px 0 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--ocean-text)" }}>
                 No Skill Factories yet. Click <strong>+ Skill Factory</strong> to insert a new group after the cover.
               </p>
               <div className="helper" style={{ marginTop: 8 }}>
@@ -205,16 +127,9 @@ export default function SlideList({
 
           {/* Normal slides */}
           {safeSlides.length === 0 ? (
-            <li
-              style={{
-                border: "1px dashed rgba(17,24,39,0.20)",
-                borderRadius: 14,
-                padding: 14,
-                background: "rgba(37,99,235,0.04)"
-              }}
-            >
+            <li className="slEmpty">
               <div className="badge">Empty state</div>
-              <p style={{ margin: "10px 0 0 0", fontSize: 13, lineHeight: 1.5, color: "#111827" }}>
+              <p style={{ margin: "10px 0 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--ocean-text)" }}>
                 No content slides yet. Click <strong>+ Add</strong> to create your first content slide.
               </p>
               <div className="helper" style={{ marginTop: 8 }}>
@@ -226,42 +141,24 @@ export default function SlideList({
               const selected = slide.id === selectedId;
               const slideNumber = 2 + factories.length + idx; // cover=1; factories occupy 2..; normal start after
               return (
-                <li
-                  key={slide.id}
-                  style={{
-                    border: `1px solid ${selected ? "rgba(37,99,235,0.45)" : "rgba(17,24,39,0.12)"}`,
-                    borderRadius: 14,
-                    padding: 10,
-                    background: selected ? "rgba(37,99,235,0.06)" : "#fff",
-                    boxShadow: selected ? "0 8px 18px rgba(37,99,235,0.10)" : "none",
-                    transition: "background 150ms ease, border-color 150ms ease, box-shadow 150ms ease"
-                  }}
-                >
+                <li key={slide.id} className={`slItem ${selected ? "slItemActive" : ""}`}>
                   <button
                     type="button"
                     onClick={() => onSelect(slide.id)}
-                    className="btn btnGhost"
-                    style={{
-                      width: "100%",
-                      textAlign: "left",
-                      padding: 10,
-                      borderRadius: 12
-                    }}
+                    className="btn btnGhost slItemButton"
                     aria-current={selected ? "true" : "false"}
                   >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <div className="slMetaTop">
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {slide.title?.trim() ? slide.title : `Untitled slide ${slideNumber}`}
-                        </div>
-                        <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{slide.subtitle?.trim() ? slide.subtitle : "No subtitle"}</div>
+                        <div className="slTitle">{slide.title?.trim() ? slide.title : `Untitled slide ${slideNumber}`}</div>
+                        <div className="slSub">{slide.subtitle?.trim() ? slide.subtitle : "No subtitle"}</div>
                       </div>
-                      <span style={{ fontSize: 12, color: "#6b7280" }}>#{slideNumber}</span>
+                      <span className="slIndex">#{slideNumber}</span>
                     </div>
                   </button>
 
-                  <div style={{ display: "flex", gap: 8, justifyContent: "space-between", paddingTop: 8 }}>
-                    <div style={{ display: "flex", gap: 8 }}>
+                  <div className="slItemFooter">
+                    <div className="slActions">
                       <button
                         type="button"
                         className="btn btnSmall btnGhost"
@@ -300,65 +197,24 @@ export default function SlideList({
           )}
 
           {/* Global Last Page (pinned) */}
-          <li
-            style={{
-              border: `1px solid ${lastSelected ? "rgba(37,99,235,0.65)" : "rgba(37,99,235,0.18)"}`,
-              borderRadius: 14,
-              padding: 10,
-              background: lastSelected ? "rgba(37,99,235,0.08)" : "rgba(249,250,251,0.9)",
-              boxShadow: lastSelected ? "0 10px 22px rgba(37,99,235,0.12)" : "none",
-              position: "relative"
-            }}
-          >
-            <div
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                borderRadius: 14,
-                background: "linear-gradient(135deg, rgba(37,99,235,0.06), rgba(255,255,255,0))",
-                pointerEvents: "none"
-              }}
-            />
+          <li className={`slItem slItemPinned ${lastSelected ? "slItemActive" : ""}`}>
             <button
               type="button"
               onClick={() => onSelect(globalLast.id)}
-              className="btn btnGhost"
-              style={{
-                width: "100%",
-                textAlign: "left",
-                padding: 10,
-                borderRadius: 12,
-                position: "relative"
-              }}
+              className="btn btnGhost slItemButton"
               aria-current={lastSelected ? "true" : "false"}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div className="slMetaTop">
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.03em", textTransform: "uppercase", color: "#1d4ed8" }}>
-                    Global Last Page
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 900,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      marginTop: 2
-                    }}
-                  >
-                    {globalLast?.data?.headline?.trim() ? globalLast.data.headline : "Closing headline"}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
-                    {globalLast?.data?.tagline?.trim() ? globalLast.data.tagline : "Brand / tagline"}
-                  </div>
+                  <div className="slKicker">Global Last Page</div>
+                  <div className="slTitle">{globalLast?.data?.headline?.trim() ? globalLast.data.headline : "Closing headline"}</div>
+                  <div className="slSub">{globalLast?.data?.tagline?.trim() ? globalLast.data.tagline : "Brand / tagline"}</div>
                 </div>
-                <span style={{ fontSize: 12, color: "#6b7280" }}>Last</span>
+                <span className="slIndex">Last</span>
               </div>
             </button>
 
-            <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 8, position: "relative" }}>
+            <div className="slItemFooter">
               <div className="badge" title="Pinned closing slide">
                 Pinned • Non-removable
               </div>
