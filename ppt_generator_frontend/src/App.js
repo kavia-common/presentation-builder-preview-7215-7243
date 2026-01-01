@@ -7,6 +7,7 @@ import SlideForm from "./components/SlideForm";
 import SlidePreview from "./components/SlidePreview";
 import Toast from "./components/Toast";
 import PresentationPreviewModal from "./components/PresentationPreviewModal";
+import Breadcrumbs from "./components/Breadcrumbs";
 
 import { createEmptySlide, validateSlides } from "./utils/slideModel";
 import { exportSlidesToPptx } from "./utils/pptExport";
@@ -356,6 +357,56 @@ function App() {
     selectedFactoryId
   ]);
 
+  const breadcrumbItems = useMemo(() => {
+    // Slide number semantics here follow the same deck ordering as SlideList / previewProps:
+    // Cover = #1, Skill Factory slides follow, then normal slides, then Last.
+    const items = [{ label: "Cover", title: "Global Cover" }];
+
+    if (isCoverSelected) return items;
+
+    if (isSkillFactorySlide1Selected || isSkillFactorySlide2Selected) {
+      const sfIndex = selectedFactoryId ? factories.findIndex((f) => f.id === selectedFactoryId) : -1;
+      const displayFactoryIndex = sfIndex >= 0 ? sfIndex + 1 : 1;
+
+      const factoryName =
+        selectedFactory?.slides?.slide1?.factoryName?.trim() ||
+        selectedFactory?.name?.trim?.() ||
+        `Skill Factory ${displayFactoryIndex}`;
+
+      const sfSlideNo = isSkillFactorySlide2Selected ? 2 : 1;
+      items.push({
+        label: factoryName,
+        title: factoryName
+      });
+      items.push({
+        label: `Slide ${sfSlideNo}`,
+        title: `Skill Factory slide ${sfSlideNo}`
+      });
+      return items;
+    }
+
+    if (isLastSelected) {
+      items.push({ label: "Last", title: "Global Last Page" });
+      return items;
+    }
+
+    // Normal slide: show Slide N where N is deck slide number (Cover is Slide 1).
+    // Normal slides start at 2 + factories*2 (because cover is #1).
+    const safeIdx = Math.max(0, Number.isFinite(selectedIndex) ? selectedIndex : 0);
+    const slideNumber = 2 + factories.length * 2 + safeIdx;
+    items.push({ label: `Slide ${slideNumber}`, title: `Content slide ${slideNumber}` });
+    return items;
+  }, [
+    factories,
+    isCoverSelected,
+    isLastSelected,
+    isSkillFactorySlide1Selected,
+    isSkillFactorySlide2Selected,
+    selectedFactory,
+    selectedFactoryId,
+    selectedIndex
+  ]);
+
   const generateDisabled = !canGenerate || isGenerating;
 
   return (
@@ -433,9 +484,19 @@ function App() {
               onMoveDown={(idx) => moveSlide(idx, idx + 1)}
             />
 
-            <SlidePreview {...previewProps} />
+            <div style={{ display: "grid", gap: 12, alignContent: "start", minWidth: 0 }}>
+              <div className="editorBreadcrumbRow">
+                <Breadcrumbs items={breadcrumbItems} ariaLabel="Editor breadcrumb" />
+              </div>
+
+              <SlidePreview {...previewProps} />
+            </div>
 
             <div style={{ display: "grid", gap: 16 }}>
+              <div className="editorBreadcrumbRow">
+                <Breadcrumbs items={breadcrumbItems} ariaLabel="Editor breadcrumb" />
+              </div>
+
               <SlideForm
                 mode={
                   isCoverSelected

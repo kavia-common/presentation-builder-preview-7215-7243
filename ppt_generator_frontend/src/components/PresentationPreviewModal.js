@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SlidePreview from "./SlidePreview";
+import Breadcrumbs from "./Breadcrumbs";
 
 /**
  * Full-deck presentation preview modal.
@@ -114,6 +115,38 @@ export default function PresentationPreviewModal({
 
   const active = deck[activeIndex];
 
+  const breadcrumbItems = useMemo(() => {
+    const items = [{ label: "Cover", title: "Global Cover" }];
+
+    if (!active) return items;
+
+    if (active.kind === "cover") return items;
+
+    if (active.kind === "skillFactorySlide1" || active.kind === "skillFactorySlide2") {
+      const f = active.data;
+      const factoryIndex = Array.isArray(skillFactories) ? skillFactories.findIndex((x) => x?.id === f?.id) : -1;
+      const displayFactoryIndex = factoryIndex >= 0 ? factoryIndex + 1 : 1;
+
+      const factoryName =
+        f?.slides?.slide1?.factoryName?.trim() || f?.name?.trim?.() || `Skill Factory ${displayFactoryIndex}`;
+
+      const sfSlideNo = active.kind === "skillFactorySlide2" ? 2 : 1;
+
+      items.push({ label: factoryName, title: factoryName });
+      items.push({ label: `Slide ${sfSlideNo}`, title: `Skill Factory slide ${sfSlideNo}` });
+      return items;
+    }
+
+    if (active.kind === "last") {
+      items.push({ label: "Last", title: "Global Last Page" });
+      return items;
+    }
+
+    // Normal slide: show deck number (Cover is Slide 1)
+    items.push({ label: `Slide ${activeIndex + 1}`, title: `Content slide ${activeIndex + 1}` });
+    return items;
+  }, [active, activeIndex, skillFactories]);
+
   // "Zoom to fit" computation: scale the 16:9 slide area to available space.
   useEffect(() => {
     if (!open) return;
@@ -172,8 +205,13 @@ export default function PresentationPreviewModal({
         ref={modalRef}
       >
         <div className="ppHeader">
-          <div className="ppTitleBlock">
+          <div className="ppTitleBlock" style={{ minWidth: 0 }}>
             <div className="ppTitle">Presentation preview</div>
+
+            <div style={{ marginTop: 6, minWidth: 0 }}>
+              <Breadcrumbs items={breadcrumbItems} ariaLabel="Preview breadcrumb" />
+            </div>
+
             <div className="ppSubTitle">
               Slide {activeIndex + 1} of {total} •{" "}
               {active?.kind === "cover"
