@@ -224,6 +224,183 @@ a{color:inherit}
 .topSlideSelectLabel{font-size:12px;font-weight:950;color:rgba(17,24,39,0.78)}
 .topSlideSelect{max-width:min(560px, 100%)}
 
+/* --- Top slide mega-menu (grouped selector) --- */
+.smRoot{position:relative;display:inline-block;max-width:min(720px, 100%);width:100%}
+.smButton{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  width:100%;
+  text-align:left;
+  cursor:pointer;
+}
+.smButtonLabel{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-weight:800;
+  font-size:13px;
+}
+.smButtonChevron{opacity:.65;font-weight:900}
+
+.smMenu{
+  position:absolute;
+  top:calc(100% + 8px);
+  left:0;
+  width:min(860px, calc(100vw - 32px));
+  border:1px solid var(--ocean-border);
+  border-radius:14px;
+  background:#fff;
+  overflow:hidden;
+  z-index:40;
+  /* Avoid heavy shadows; keep minimal */
+  box-shadow:0 10px 22px rgba(17,24,39,0.10);
+}
+
+.smPanel{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+}
+.smPanelHeader{
+  padding:10px 10px;
+  font-size:11px;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+  font-weight:900;
+  color:rgba(17,24,39,0.65);
+  border-bottom:1px solid rgba(17,24,39,0.08);
+  background:rgba(249,250,251,1);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  min-width:0;
+}
+.smHeaderTitle{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.smHeaderHint{
+  text-transform:none;
+  letter-spacing:0;
+  font-weight:800;
+  font-size:11px;
+  color:rgba(17,24,39,0.50);
+  white-space:nowrap;
+}
+
+.smMenu{
+  display:grid;
+  grid-template-columns:300px 1fr;
+}
+@media (max-width: 720px){
+  .smMenu{grid-template-columns:1fr}
+  .smPanelItems{border-left:0 !important;border-top:1px solid rgba(17,24,39,0.10)}
+}
+
+.smPanelGroups{background:#fff}
+.smPanelItems{border-left:1px solid rgba(17,24,39,0.10);background:#fff}
+
+.smList{
+  padding:8px;
+  display:grid;
+  gap:6px;
+  overflow:auto;
+  max-height:min(420px, 60vh);
+}
+
+.smSeparator{
+  height:1px;
+  background:rgba(17,24,39,0.08);
+  margin:6px 2px;
+}
+
+.smRow{
+  appearance:none;
+  border:1px solid rgba(17,24,39,0.10);
+  background:#fff;
+  border-radius:12px;
+  padding:9px 10px;
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  min-width:0;
+  text-align:left;
+}
+.smRow:hover{background:rgba(17,24,39,0.02)}
+.smRow:focus{
+  outline:2px solid rgba(37,99,235,0.35);
+  outline-offset:2px;
+}
+.smRowActive{border-color:rgba(37,99,235,0.35)}
+.smRowSelected{
+  background:rgba(37,99,235,0.06);
+  border-color:rgba(37,99,235,0.25);
+}
+.smRowLabel{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:13px;
+  font-weight:850;
+  color:rgba(17,24,39,0.86);
+}
+.smRowMeta{
+  font-size:11px;
+  font-weight:900;
+  color:rgba(17,24,39,0.55);
+  border:1px solid rgba(17,24,39,0.10);
+  background:#fff;
+  border-radius:999px;
+  padding:3px 8px;
+}
+.smRowArrow{font-weight:900;color:rgba(17,24,39,0.45)}
+
+.smEmpty{
+  border-radius:12px;
+  border:1px dashed rgba(17,24,39,0.18);
+  background:rgba(17,24,39,0.02);
+  padding:12px;
+  color:rgba(17,24,39,0.62);
+  font-size:12px;
+  line-height:1.4;
+}
+
+.smFooter{
+  grid-column:1 / -1;
+  border-top:1px solid rgba(17,24,39,0.10);
+  background:rgba(249,250,251,1);
+  padding:8px 10px;
+  font-size:11px;
+  color:rgba(17,24,39,0.55);
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:flex-end;
+}
+.smKbd{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:22px;
+  height:18px;
+  padding:0 6px;
+  border-radius:7px;
+  border:1px solid rgba(17,24,39,0.12);
+  background:#fff;
+  font-weight:900;
+  font-size:11px;
+  color:rgba(17,24,39,0.70);
+}
+
 /* New main layout (no left hierarchy rail) */
 .gridMainSolo{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}
 .rightPane{display:grid;gap:12px;align-content:start;min-width:0}

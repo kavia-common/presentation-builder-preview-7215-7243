@@ -6,6 +6,7 @@ import SlideForm from "./components/SlideForm";
 import SlidePreview from "./components/SlidePreview";
 import Toast from "./components/Toast";
 import PresentationPreviewModal from "./components/PresentationPreviewModal";
+import SlideMegaMenu from "./components/SlideMegaMenu";
 
 import { createEmptySlide, validateSlides } from "./utils/slideModel";
 import { exportSlidesToPptx } from "./utils/pptExport";
@@ -594,19 +595,21 @@ function App() {
           <label className="topSlideSelectLabel" htmlFor="topSlideSelect">
             Slide
           </label>
-          <select
+
+          <SlideMegaMenu
             id="topSlideSelect"
-            className="select topSlideSelect"
             value={dropdownValue}
-            onChange={handleDropdownChange}
-            aria-label="Select slide"
-          >
-            {slideDropdownOptions.map((opt) => (
-              <option key={opt.value} value={opt.value} disabled={Boolean(opt.disabled)}>
-                {opt.kind === "separator" ? "──────────" : opt.label}
-              </option>
-            ))}
-          </select>
+            factories={factories}
+            slides={slides}
+            onChange={(next) => {
+              if (!next) return;
+              // Keep the exact same selection + scroll behavior as the old <select>.
+              setSelectedId(next);
+              window.requestAnimationFrame(() => {
+                rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+              });
+            }}
+          />
         </div>
       </header>
 
