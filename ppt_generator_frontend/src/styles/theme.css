@@ -147,14 +147,29 @@ a{color:inherit}
 .sf2ImgPlaceholder{display:grid;place-items:center;text-align:center;padding:14px;color:rgba(17,24,39,0.60);font-size:12px;line-height:1.35}
 .sf2BottomBand{height:56px;background:#2f78a8;margin-top:10px}
 
-/* Skill Factory Slide 2 editor upload grid */
-.sf2UploadGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
-@media (max-width: 980px){.sf2UploadGrid{grid-template-columns:1fr}}
-.sf2UploadCard{border:1px solid rgba(17,24,39,0.12);border-radius:14px;overflow:hidden;background:#fff}
-.sf2UploadTop{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 10px;border-bottom:1px solid rgba(17,24,39,0.08);background:rgba(37,99,235,0.04)}
-.sf2UploadName{font-size:12px;font-weight:900;color:rgba(17,24,39,0.80);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sf2UploadImgWrap{background:rgba(17,24,39,0.02)}
-.sf2UploadImg{display:block;width:100%;height:auto}
+/* Masonry (generic) */
+.masonry{width:100%}
+.masonryItem{display:block}
+
+/* Skill Factory Slide 2 editor: Masonry tiles */
+.sf2MasonryWrap{margin-top:12px}
+.sf2Tile{border:1px solid rgba(17,24,39,0.12);border-radius:14px;overflow:hidden;background:#fff}
+.sf2TileTop{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 10px;border-bottom:1px solid rgba(17,24,39,0.08);background:rgba(37,99,235,0.04)}
+.sf2TileName{font-size:12px;font-weight:900;color:rgba(17,24,39,0.80);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sf2TileActions{display:flex;align-items:center;gap:8px}
+.sf2DragHint{font-size:11px;color:rgba(17,24,39,0.55);border:1px solid rgba(17,24,39,0.12);background:#fff;border-radius:999px;padding:4px 8px;font-weight:800}
+.sf2TileImgWrap{background:rgba(17,24,39,0.02)}
+.sf2TileImg{display:block;width:100%;height:auto;object-fit:contain;background:#fff}
+.sf2TilePlaceholder{display:grid;place-items:center;text-align:center;padding:14px;color:rgba(17,24,39,0.60);font-size:12px;line-height:1.35;min-height:120px}
+.sf2TileDragging{outline:2px solid rgba(37,99,235,0.35);border-color:rgba(37,99,235,0.35)}
+
+/* Skill Factory Slide 2 preview: responsive Masonry */
+.sf2MasonryPreview{column-gap:8px;column-count:4}
+@media (max-width: 1199px){.sf2MasonryPreview{column-count:2}}
+@media (max-width: 767px){.sf2MasonryPreview{column-count:1}}
+.sf2MasonryPreviewItem{break-inside:avoid;margin-bottom:8px}
+.sf2MasonryPreviewTile{border:1px solid rgba(17,24,39,0.12);border-radius:14px;overflow:hidden;background:rgba(249,250,251,1)}
+.sf2MasonryPreviewImg{display:block;width:100%;height:auto;object-fit:contain;background:#fff}
 
 /* Presentation preview modal */
 .ppBackdrop{position:fixed;inset:0;background:rgba(17,24,39,0.55);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50}

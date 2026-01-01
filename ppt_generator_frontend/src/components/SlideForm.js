@@ -1,5 +1,6 @@
 import React, { useId, useMemo, useRef } from "react";
 import { THEME_PRESETS } from "../utils/slideModel";
+import MasonryDnD from "./MasonryDnD";
 
 function ColorSwatch({ color, selected, onClick, label }) {
   return (
@@ -840,22 +841,53 @@ export default function SlideForm({
         return t === "image/png" || t === "image/jpeg" || t === "image/jpg";
       });
 
-      accepted.forEach((file) => {
+      if (!accepted.length) {
+        if (sf2FileInputRef.current) sf2FileInputRef.current.value = "";
+        return;
+      }
+
+      // Append in selection order; compute dimensions asynchronously but keep relative order.
+      const base = [...metrics];
+
+      accepted.forEach((file, localIdx) => {
         const objectUrl = URL.createObjectURL(file);
+        const placeholder = { objectUrl, fileName: file.name, width: 0, height: 0 };
+
+        // Optimistically add in order
+        const optimistic = [...base, ...accepted.slice(0, localIdx + 1).map((f2, j) => (j === localIdx ? placeholder : null))].filter(Boolean);
+
+        // Only update optimistically on first item to avoid multiple re-renders;
+        // instead, do a single append upfront then patch dimensions per image load.
+        if (localIdx === 0) {
+          update({ metricsImages: [...base, ...accepted.map((f2) => ({ objectUrl: "", fileName: f2.name, width: 0, height: 0 }))] });
+        }
 
         const img = new Image();
         img.onload = () => {
-          update({
-            metricsImages: [
-              ...metrics,
-              { objectUrl, fileName: file.name, width: img.naturalWidth, height: img.naturalHeight }
-            ]
-          });
+          // Patch the matching fileName slot from the end segment (best-effort).
+          // If there are duplicates, we patch the first matching "empty objectUrl" entry.
+          const next = (Array.isArray(slide2.metricsImages) ? slide2.metricsImages : []).slice();
+          const startIdx = base.length;
+          const slot = next.findIndex((m, i) => i >= startIdx && m?.fileName === file.name && !m?.objectUrl);
+          const targetIdx = slot >= 0 ? slot : next.length;
+          if (targetIdx < next.length) {
+            next[targetIdx] = { objectUrl, fileName: file.name, width: img.naturalWidth, height: img.naturalHeight };
+          } else {
+            next.push({ objectUrl, fileName: file.name, width: img.naturalWidth, height: img.naturalHeight });
+          }
+          update({ metricsImages: next });
         };
         img.onerror = () => {
-          update({
-            metricsImages: [...metrics, { objectUrl, fileName: file.name, width: 0, height: 0 }]
-          });
+          const next = (Array.isArray(slide2.metricsImages) ? slide2.metricsImages : []).slice();
+          const startIdx = base.length;
+          const slot = next.findIndex((m, i) => i >= startIdx && m?.fileName === file.name && !m?.objectUrl);
+          const targetIdx = slot >= 0 ? slot : next.length;
+          if (targetIdx < next.length) {
+            next[targetIdx] = { objectUrl, fileName: file.name, width: 0, height: 0 };
+          } else {
+            next.push({ objectUrl, fileName: file.name, width: 0, height: 0 });
+          }
+          update({ metricsImages: next });
         };
         img.src = objectUrl;
       });
@@ -880,11 +912,22 @@ export default function SlideForm({
       update({ metricsImages: [] });
     };
 
+    const moveItem = (fromIdx, toIdx) => {
+      if (fromIdx === toIdx) return;
+      if (fromIdx < 0 || toIdx < 0) return;
+      if (fromIdx >= metrics.length || toIdx >= metrics.length) return;
+      const next = [...metrics];
+      const [it] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, it);
+      update({ metricsImages: next });
+    };
+
+    // Responsive columns (4/2/1) driven by CSS in theme.css via --sf2MasonryCols.
     return (
       <section className="card" aria-label="Skill Factory Slide 2 editor">
         <div className="cardHeader">
           <h2 className="cardTitle">Skill Factory – Slide 2</h2>
-          <p className="cardHint">Upload one or more metrics screenshots (PNG/JPG). These stay local (object URLs).</p>
+          <p className="cardHint">Upload one or more metrics screenshots (PNG/JPG). Drag anywhere on a tile to reorder.</p>
         </div>
 
         <div className="cardBody">
@@ -912,33 +955,61 @@ export default function SlideForm({
                 onChange={(e) => onAddFiles(e.target.files)}
                 aria-label="Upload Skill Factory metrics images (local only)"
               />
+
               <div className="helper">
-                Tip: Use screenshots similar to the reference (donut charts + bar chart). No CSV/JSON parsing.
+                Tip: Drag a tile to a new position (drag-anywhere). Export mirrors this order (first 3 use the main Slide 2 placement).
               </div>
 
               {metrics.length ? (
-                <div className="sf2UploadGrid" aria-label="Uploaded metrics images">
-                  {metrics.map((m, idx) => (
-                    <div key={`${m.objectUrl}_${idx}`} className="sf2UploadCard">
-                      <div className="sf2UploadTop">
-                        <div className="sf2UploadName" title={m.fileName || "metrics image"}>
-                          {m.fileName || `metrics_${idx + 1}`}
+                <div className="sf2MasonryWrap" aria-label="Uploaded metrics images">
+                  <MasonryDnD
+                    items={metrics}
+                    getItemKey={(m, idx) => `${m?.objectUrl || "img"}_${m?.fileName || "file"}_${idx}`}
+                    columns={4}
+                    gapPx={8}
+                    ariaLabel="Uploaded metrics images (reorderable)"
+                    onReorder={moveItem}
+                    onRemoveItem={removeAt}
+                    renderItem={(m, { index, draggable, onRemove }) => (
+                      <div className={`sf2Tile ${draggable ? "sf2TileDragging" : ""}`}>
+                        <div className="sf2TileTop">
+                          <div className="sf2TileName" title={m.fileName || "metrics image"}>
+                            {m.fileName || `metrics_${index + 1}`}
+                          </div>
+                          <div className="sf2TileActions">
+                            <span className="sf2DragHint" aria-hidden="true" title="Drag to reorder">
+                              Drag
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btnSmall btnGhost"
+                              onClick={onRemove}
+                              aria-label={`Remove metrics image ${index + 1}`}
+                              title="Remove"
+                            >
+                              −
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          className="btn btnSmall btnGhost"
-                          onClick={() => removeAt(idx)}
-                          aria-label={`Remove metrics image ${idx + 1}`}
-                          title="Remove"
-                        >
-                          −
-                        </button>
+
+                        <div className="sf2TileImgWrap">
+                          {m?.objectUrl ? (
+                            <img
+                              className="sf2TileImg"
+                              src={m.objectUrl}
+                              alt={m.fileName ? `Metrics: ${m.fileName}` : "Metrics"}
+                              draggable={false}
+                            />
+                          ) : (
+                            <div className="sf2TilePlaceholder">
+                              <div className="badge">Loading</div>
+                              <div style={{ marginTop: 8 }}>Preparing preview…</div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="sf2UploadImgWrap">
-                        <img className="sf2UploadImg" src={m.objectUrl} alt={m.fileName ? `Metrics: ${m.fileName}` : "Metrics"} />
-                      </div>
-                    </div>
-                  ))}
+                    )}
+                  />
                 </div>
               ) : (
                 <div className="coverUploadEmpty">

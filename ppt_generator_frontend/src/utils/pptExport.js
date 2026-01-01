@@ -570,7 +570,8 @@ async function addSkillFactorySlide2(pptx, factory) {
     line: { color: "2F78A8" }
   });
 
-  const images = Array.isArray(sf2.metricsImages) ? sf2.metricsImages : [];
+  // IMPORTANT: export must mirror the UI order (masonry reorder).
+  const imagesOrdered = Array.isArray(sf2.metricsImages) ? sf2.metricsImages : [];
 
   // Main 3-slot layout area (above band)
   const topY = 1.05;
@@ -617,12 +618,12 @@ async function addSkillFactorySlide2(pptx, factory) {
     }
   };
 
-  await place(images[0], donut1, true);
-  await place(images[1], donut2, true);
-  await place(images[2], chart, false);
+  await place(imagesOrdered[0], donut1, true);
+  await place(imagesOrdered[1], donut2, true);
+  await place(imagesOrdered[2], chart, false);
 
   // Extra images: grid placed under the main area (still above band), if space allows.
-  const extras = images.slice(3);
+  const extras = imagesOrdered.slice(3);
   if (extras.length) {
     const gridTop = Math.min(chart.y + chart.h + 0.25, donut1.y + donut1.h + 0.35);
     const gridH = Math.max(0, SLIDE_H - bandH - gridTop - 0.25);

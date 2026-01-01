@@ -321,52 +321,31 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
               </div>
 
               <div className="sf2Body">
-                <div className="sf2Grid">
-                  <div className="sf2DonutCol">
-                    <div className="sf2ImgCard sf2ImgCardRound">
-                      {sf2?.metricsImages?.[0]?.objectUrl ? (
-                        <img className="sf2Img" src={sf2.metricsImages[0].objectUrl} alt={sf2.metricsImages[0].fileName || "Metrics donut 1"} />
-                      ) : (
-                        <div className="sf2ImgPlaceholder">
-                          <div className="badge">Upload</div>
-                          <div style={{ marginTop: 8 }}>Donut metric #1</div>
+                {Array.isArray(sf2?.metricsImages) && sf2.metricsImages.length ? (
+                  <div className="sf2MasonryPreview" aria-label="Skill Factory Slide 2 masonry preview">
+                    {(sf2.metricsImages || []).map((m, idx) => (
+                      <div key={`${m.objectUrl || "img"}_${m.fileName || "file"}_${idx}`} className="sf2MasonryPreviewItem">
+                        <div className="sf2MasonryPreviewTile">
+                          {m?.objectUrl ? (
+                            <img className="sf2MasonryPreviewImg" src={m.objectUrl} alt={m.fileName || `Metrics ${idx + 1}`} />
+                          ) : (
+                            <div className="sf2ImgPlaceholder">
+                              <div className="badge">Upload</div>
+                              <div style={{ marginTop: 8 }}>Metrics #{idx + 1}</div>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="coverUploadEmpty" style={{ marginTop: 10 }}>
+                    <div className="badge">Upload</div>
+                    <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
+                      Add metrics images in the editor to populate Skill Factory Slide 2.
                     </div>
                   </div>
-
-                  <div className="sf2DonutCol">
-                    <div className="sf2ImgCard sf2ImgCardRound">
-                      {sf2?.metricsImages?.[1]?.objectUrl ? (
-                        <img className="sf2Img" src={sf2.metricsImages[1].objectUrl} alt={sf2.metricsImages[1].fileName || "Metrics donut 2"} />
-                      ) : (
-                        <div className="sf2ImgPlaceholder">
-                          <div className="badge">Upload</div>
-                          <div style={{ marginTop: 8 }}>Donut metric #2</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="sf2ChartCol">
-                    <div className="sf2ImgCard">
-                      {sf2?.metricsImages?.[2]?.objectUrl ? (
-                        <img className="sf2Img" src={sf2.metricsImages[2].objectUrl} alt={sf2.metricsImages[2].fileName || "Metrics chart"} />
-                      ) : (
-                        <div className="sf2ImgPlaceholder">
-                          <div className="badge">Upload</div>
-                          <div style={{ marginTop: 8 }}>Chart / bars</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {Array.isArray(sf2?.metricsImages) && sf2.metricsImages.length > 3 ? (
-                  <div className="helper" style={{ marginTop: 10 }}>
-                    Note: Only the first 3 images are shown in the on-canvas layout (extra images will still export on Slide 2 as a grid).
-                  </div>
-                ) : null}
+                )}
               </div>
 
               <div className="sf2BottomBand" aria-hidden="true" />
