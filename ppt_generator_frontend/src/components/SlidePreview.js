@@ -8,8 +8,8 @@ function normalizeMultiline(text) {
     .filter(Boolean);
 }
 
-// PUBLIC_INTERFACE
-export default function SlidePreview({ mode = "slide", cover, last, slide, skillFactory, slideIndex, totalSlides }) {
+/* PUBLIC_INTERFACE */
+export default function SlidePreview({ mode = "slide", cover, last, slide, skillFactory, slideIndex = 0, totalSlides = 1 }) {
   /** Center preview "canvas" for the selected item (Global Cover, Global Last Page, Skill Factory Slide 1, or a regular slide). */
   const preset = useMemo(() => {
     const pid = slide?.theme?.backgroundPresetId || "surface";
@@ -18,8 +18,15 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
 
   const sf1 = skillFactory?.slides?.slide1;
 
-  // Empty state
-  if (mode !== "cover" && mode !== "last" && !slide) {
+  // Empty state:
+  // - Normal slides require `slide`
+  // - Cover/Last are driven by `cover`/`last`
+  // - Skill Factory Slide 1 is driven by `skillFactory`
+  //
+  // Previously this guard checked `!slide` for *all* non-cover/non-last modes,
+  // which incorrectly blocked rendering of Skill Factory Slide 1 (it intentionally has no `slide`).
+  const needsNormalSlide = mode === "slide";
+  if (needsNormalSlide && !slide) {
     return (
       <section className="card" aria-label="Slide preview">
         <div className="cardHeader">
@@ -45,6 +52,9 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
     );
   }
 
+  const safeSlideIndex = Number.isFinite(slideIndex) ? slideIndex : 0;
+  const safeTotalSlides = Number.isFinite(totalSlides) && totalSlides > 0 ? totalSlides : 1;
+
   const headerLabel = mode === "cover" ? "Cover Preview" : "Preview";
 
   return (
@@ -53,7 +63,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
           <h2 className="cardTitle">{headerLabel}</h2>
           <span className="kbdHint" aria-label="Slide position">
-            Slide {slideIndex + 1} of {totalSlides}
+            Slide {safeSlideIndex + 1} of {safeTotalSlides}
           </span>
         </div>
         <p className="cardHint">This is an on-screen approximation of the exported layout.</p>
