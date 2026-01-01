@@ -17,18 +17,30 @@ Then open http://localhost:3000
 
 ## How to use
 
-1. Click **+ Add** to create slides (the slide list is on the left).
-2. Select a slide and edit:
-   - Title (required)
+1. Edit the fixed **Global Cover** (always **slide 1**) for:
+   - Title, subtitle, tagline
+   - Optional cover background image (local-only Object URL)
+2. Click **+ Add** to create content slides (these become slides 2..N).
+3. For each content slide, fill in:
+   - Title (required to export when content slides exist)
    - Subtitle
-   - Bullet points (add/remove)
+   - Bullet points
    - Optional image (local-only; uses an Object URL)
    - Theme: background preset + text color
-3. See the result in the **Preview** panel.
-4. Click **Generate PPT** to download `presentation.pptx`.
+4. Click **Generate PPT** to download a `.pptx`.
+
+### Generate PPT behavior
+
+- Export is **client-side** using **PptxGenJS (pptxgenjs@3.11.0)**.
+- The exported deck always starts with the **Global Cover as slide 1**.
+- If there are **zero content slides**, export still works and produces a 1-slide deck (Global Cover only).
+- If an image cannot be embedded for any reason, export continues and the slide will show a small “Image unavailable” placeholder instead of failing.
+- The downloaded filename is based on the cover title (or fallback) and a timestamp, e.g.:
+  - `TATA_ELXSI_2026-01-01_1035.pptx`
+  - `Presentation_2026-01-01_1035.pptx`
 
 ## Notes
 
 - This is a frontend-only app. No files are uploaded anywhere.
-- Export uses **PptxGenJS** to generate the `.pptx` in the browser.
-- Validation: each slide must have a non-empty title before export is enabled.
+- Images stay local (Object URLs) and are embedded into PPTX at export time.
+- Validation: each content slide must have a non-empty title before export is enabled (Global Cover title does not block export).

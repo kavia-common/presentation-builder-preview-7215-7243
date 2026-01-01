@@ -33,8 +33,30 @@ function splitLines(text) {
     .filter(Boolean);
 }
 
+function safeFileBaseName(name) {
+  // Keep it filesystem-friendly across platforms.
+  return (name || "")
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .replace(/\s+/g, "_")
+    .slice(0, 80);
+}
+
+function timestampForFileName(d = new Date()) {
+  const pad = (n) => String(n).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const mm = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const min = pad(d.getMinutes());
+  return `${yyyy}-${mm}-${dd}_${hh}${min}`;
+}
+
 async function objectUrlToDataUrl(objectUrl) {
   const resp = await fetch(objectUrl);
+  if (!resp.ok) {
+    throw new Error(`Failed to fetch image (${resp.status})`);
+  }
   const blob = await resp.blob();
   const dataUrl = await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -43,6 +65,27 @@ async function objectUrlToDataUrl(objectUrl) {
     reader.readAsDataURL(blob);
   });
   return dataUrl;
+}
+
+function addImageMissingPlaceholder(slide, { x, y, w, h }) {
+  // Minimal placeholder: dashed-ish box + message. (No shape dashes in PptxGenJS.)
+  slide.addShape(PptxGenJS.ShapeType.rect, {
+    x,
+    y,
+    w,
+    h,
+    fill: { color: "FFFFFF", transparency: 100 },
+    line: { color: "EF4444", transparency: 35, width: 1 }
+  });
+  slide.addText("Image unavailable", {
+    x: x + 0.2,
+    y: y + 0.2,
+    w: Math.max(0, w - 0.4),
+    h: 0.4,
+    fontSize: 12,
+    italic: true,
+    color: "EF4444"
+  });
 }
 
 async function addCoverSlide(pptx, cover) {
@@ -57,15 +100,6 @@ async function addCoverSlide(pptx, cover) {
     try {
       const dataUrl = await objectUrlToDataUrl(cover.backgroundImage.objectUrl);
 
-      const fitted = fitSize({
-        srcW: cover.backgroundImage.width || 1600,
-        srcH: cover.backgroundImage.height || 900,
-        maxW: SLIDE_W,
-        maxH: SLIDE_H
-      });
-
-      // Center-crop style: we fill by scaling up so that it covers the slide.
-      // PptxGenJS doesn't crop easily; we approximate by using "contain" sizing to fill.
       // Use full-bleed with slide dimensions for simplicity (works well for wide photos).
       s.addImage({ data: dataUrl, x: 0, y: 0, w: SLIDE_W, h: SLIDE_H });
     } catch (_e) {
@@ -90,7 +124,7 @@ async function addCoverSlide(pptx, cover) {
   });
 
   // Text block
-  const title = (cover?.title || "").trim();
+  const title = (cover?.title || "").trim() || "Presentation";
   const subtitle = (cover?.subtitle || "").trim();
   const taglineLines = splitLines(cover?.tagline);
 
@@ -156,10 +190,15 @@ async function addCoverSlide(pptx, cover) {
 }
 
 // PUBLIC_INTERFACE
-export async function exportSlidesToPptx({ cover, slides }) {
+export async function exportSlidesToPptx({ cover, slides, fileName }) {
   /**
    * Generate a PPTX file from slide data and trigger download (client-side).
-   * @param {{cover: Object, slides: Array}} payload - cover + slide objects from state.
+   * Notes:
+   * - Compatible with pptxgenjs@3.11.0 (CRA-friendly); no node:* imports.
+   * - Always includes Global Cover as slide 1.
+   * - Supports zero normal slides (exports a 1-slide deck).
+   *
+   * @param {{cover: Object, slides: Array, fileName?: string}} payload - cover + slide objects from state.
    * @returns {Promise<void>}
    */
   const pptx = new PptxGenJS();
@@ -176,11 +215,12 @@ export async function exportSlidesToPptx({ cover, slides }) {
   const rightW = SLIDE_W - (M * 2 + leftW);
   const topY = 0.8;
 
-  // Slide 1: Global Cover
+  // Slide 1: Global Cover (always)
   await addCoverSlide(pptx, cover);
 
-  // Remaining slides
-  for (const slideData of slides) {
+  // Remaining slides (0..n)
+  const safeSlides = Array.isArray(slides) ? slides : [];
+  for (const slideData of safeSlides) {
     const s = pptx.addSlide();
 
     const preset = THEME_PRESETS[slideData.theme?.backgroundPresetId] || THEME_PRESETS.surface;
@@ -215,7 +255,10 @@ export async function exportSlidesToPptx({ cover, slides }) {
     }
 
     // Bullets
-    const bullets = (slideData.bullets || []).map((b) => (b || "").trim()).filter(Boolean);
+    const bullets = (slideData.bullets || [])
+      .map((b) => (b || "").trim())
+      .filter(Boolean);
+
     if (bullets.length > 0) {
       const lines = bullets.join("\n");
       s.addText(lines, {
@@ -231,21 +274,26 @@ export async function exportSlidesToPptx({ cover, slides }) {
     }
 
     // Optional image (right column)
+    const imageBox = {
+      x: M + leftW + 0.3,
+      y: 1.2,
+      w: rightW,
+      h: SLIDE_H - 2.0
+    };
+
     if (slideData.image?.objectUrl) {
       try {
         const dataUrl = await objectUrlToDataUrl(slideData.image.objectUrl);
 
-        const maxW = rightW;
-        const maxH = SLIDE_H - 2.0;
         const fitted = fitSize({
           srcW: slideData.image.width || 1600,
           srcH: slideData.image.height || 900,
-          maxW,
-          maxH
+          maxW: imageBox.w,
+          maxH: imageBox.h
         });
 
-        const x = M + leftW + 0.3 + (rightW - fitted.w) / 2;
-        const y = 1.2 + (maxH - fitted.h) / 2;
+        const x = imageBox.x + (imageBox.w - fitted.w) / 2;
+        const y = imageBox.y + (imageBox.h - fitted.h) / 2;
 
         s.addImage({
           data: dataUrl,
@@ -255,19 +303,15 @@ export async function exportSlidesToPptx({ cover, slides }) {
           h: fitted.h
         });
       } catch (_e) {
-        // If image fails, ignore it so export still works
-        s.addText("(Image failed to embed)", {
-          x: M + leftW + 0.3,
-          y: 1.4,
-          w: rightW,
-          h: 0.4,
-          fontSize: 12,
-          italic: true,
-          color: "EF4444"
-        });
+        // Image failures should never prevent PPT download.
+        addImageMissingPlaceholder(s, imageBox);
       }
     }
   }
 
-  await pptx.writeFile({ fileName: "presentation.pptx" });
+  const derived =
+    fileName ||
+    `${safeFileBaseName(cover?.title) || "Presentation"}_${timestampForFileName()}.pptx`;
+
+  await pptx.writeFile({ fileName: derived });
 }

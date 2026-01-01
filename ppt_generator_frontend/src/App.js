@@ -5,6 +5,7 @@ import "./styles/theme.css";
 import SlideList from "./components/SlideList";
 import SlideForm from "./components/SlideForm";
 import SlidePreview from "./components/SlidePreview";
+import Toast from "./components/Toast";
 
 import { createEmptySlide, validateSlides } from "./utils/slideModel";
 import { exportSlidesToPptx } from "./utils/pptExport";
@@ -12,12 +13,33 @@ import { createDefaultCover, loadCoverFromStorage, revokeCoverObjectUrl, saveCov
 
 const GLOBAL_COVER_ID = "__global_cover__";
 
+function makeTimestamp(d = new Date()) {
+  const pad = (n) => String(n).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const mm = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const min = pad(d.getMinutes());
+  return `${yyyy}-${mm}-${dd}_${hh}${min}`;
+}
+
+function safeFileBaseName(name) {
+  return (name || "")
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .replace(/\s+/g, "_")
+    .slice(0, 80);
+}
+
 // PUBLIC_INTERFACE
 function App() {
   /** Main UI entry point: slide editor + preview + export (frontend-only). */
   const [globalCoverSlide, setGlobalCoverSlide] = useState(() => loadCoverFromStorage() || createDefaultCover());
   const [slides, setSlides] = useState(() => [createEmptySlide()]);
   const [selectedId, setSelectedId] = useState(() => GLOBAL_COVER_ID);
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [toast, setToast] = useState({ open: false, variant: "info", title: "", message: "", autoHideMs: 0 });
 
   const isCoverSelected = selectedId === GLOBAL_COVER_ID;
 
@@ -54,11 +76,11 @@ function App() {
 
   const validation = useMemo(() => validateSlides(slides), [slides]);
 
-  // Cover has its own title but we won't block export on cover title.
-  const canGenerate = slides.length > 0 && validation.valid;
+  // Allow exporting even if there are zero normal slides; still require titles if slides exist.
+  const canGenerate = slides.length === 0 ? true : validation.valid;
 
   const helperText = useMemo(() => {
-    if (slides.length === 0) return "Add at least one slide to export.";
+    if (slides.length === 0) return "No content slides. Export will include only the Global Cover.";
     if (!validation.valid) {
       const nums = validation.invalidIndices.map((i) => i + 2).join(", ");
       // +2 because slide #1 is the global cover
@@ -100,8 +122,42 @@ function App() {
   };
 
   const onGenerate = async () => {
-    if (!canGenerate) return;
-    await exportSlidesToPptx({ cover: globalCoverSlide, slides });
+    if (!canGenerate || isGenerating) return;
+
+    const coverTitle = safeFileBaseName(globalCoverSlide?.title);
+    const fileName = `${coverTitle || "Presentation"}_${makeTimestamp()}.pptx`;
+
+    setIsGenerating(true);
+    setToast({
+      open: true,
+      variant: "info",
+      title: "Generating PPTX…",
+      message: "Please keep this tab open while we build your presentation.",
+      autoHideMs: 0
+    });
+
+    try {
+      // Ensure we await the promise and catch errors reliably.
+      await exportSlidesToPptx({ cover: globalCoverSlide, slides, fileName });
+
+      setToast({
+        open: true,
+        variant: "info",
+        title: "Download started",
+        message: "Your .pptx should download shortly. If blocked, check your browser’s download settings.",
+        autoHideMs: 2500
+      });
+    } catch (e) {
+      setToast({
+        open: true,
+        variant: "error",
+        title: "Export failed",
+        message: e?.message || "Unable to generate PPTX. Please try again.",
+        autoHideMs: 8000
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const previewProps = useMemo(() => {
@@ -123,8 +179,12 @@ function App() {
     };
   }, [isCoverSelected, globalCoverSlide, slides.length, selectedSlide, selectedIndex]);
 
+  const generateDisabled = !canGenerate || isGenerating;
+
   return (
     <div className="appShell">
+      <Toast toast={toast} onClose={() => setToast((t) => ({ ...t, open: false }))} />
+
       <header className="appHeader">
         <div className="container headerInner">
           <div className="headerTitle">
@@ -136,18 +196,18 @@ function App() {
             <span className="badge" title="Ocean Professional theme">
               Ocean Professional
             </span>
-            <button className="btn btnSecondary" type="button" onClick={addSlide}>
+            <button className="btn btnSecondary" type="button" onClick={addSlide} disabled={isGenerating} aria-disabled={isGenerating}>
               + Add slide
             </button>
             <button
               className="btn"
               type="button"
               onClick={onGenerate}
-              disabled={!canGenerate}
-              aria-disabled={!canGenerate}
-              title={!canGenerate ? helperText : "Generate PPTX"}
+              disabled={generateDisabled}
+              aria-disabled={generateDisabled}
+              title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Generate PPTX"}
             >
-              Generate PPT
+              {isGenerating ? "Generating…" : "Generate PPT"}
             </button>
           </div>
         </div>
