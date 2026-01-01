@@ -17,6 +17,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
   }, [slide?.theme?.backgroundPresetId]);
 
   const sf1 = skillFactory?.slides?.slide1;
+  const sf2 = skillFactory?.slides?.slide2;
 
   // Empty state:
   // - Normal slides require `slide`
@@ -310,6 +311,65 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                   <div className="sfFooterText">Ocean Professional • Skill Factory</div>
                 </div>
               </div>
+            </div>
+          </div>
+        ) : mode === "skillFactorySlide2" ? (
+          <div className="sf2PreviewFrame" aria-label="Skill Factory Slide 2 preview">
+            <div className="sf2PreviewBg">
+              <div className="sf2TitleRow">
+                <div className="sf2TitleText">{sf1?.factoryName?.trim() ? sf1.factoryName : "Skill Factory"}</div>
+              </div>
+
+              <div className="sf2Body">
+                <div className="sf2Grid">
+                  <div className="sf2DonutCol">
+                    <div className="sf2ImgCard sf2ImgCardRound">
+                      {sf2?.metricsImages?.[0]?.objectUrl ? (
+                        <img className="sf2Img" src={sf2.metricsImages[0].objectUrl} alt={sf2.metricsImages[0].fileName || "Metrics donut 1"} />
+                      ) : (
+                        <div className="sf2ImgPlaceholder">
+                          <div className="badge">Upload</div>
+                          <div style={{ marginTop: 8 }}>Donut metric #1</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="sf2DonutCol">
+                    <div className="sf2ImgCard sf2ImgCardRound">
+                      {sf2?.metricsImages?.[1]?.objectUrl ? (
+                        <img className="sf2Img" src={sf2.metricsImages[1].objectUrl} alt={sf2.metricsImages[1].fileName || "Metrics donut 2"} />
+                      ) : (
+                        <div className="sf2ImgPlaceholder">
+                          <div className="badge">Upload</div>
+                          <div style={{ marginTop: 8 }}>Donut metric #2</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="sf2ChartCol">
+                    <div className="sf2ImgCard">
+                      {sf2?.metricsImages?.[2]?.objectUrl ? (
+                        <img className="sf2Img" src={sf2.metricsImages[2].objectUrl} alt={sf2.metricsImages[2].fileName || "Metrics chart"} />
+                      ) : (
+                        <div className="sf2ImgPlaceholder">
+                          <div className="badge">Upload</div>
+                          <div style={{ marginTop: 8 }}>Chart / bars</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {Array.isArray(sf2?.metricsImages) && sf2.metricsImages.length > 3 ? (
+                  <div className="helper" style={{ marginTop: 10 }}>
+                    Note: Only the first 3 images are shown in the on-canvas layout (extra images will still export on Slide 2 as a grid).
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="sf2BottomBand" aria-hidden="true" />
             </div>
           </div>
         ) : (

@@ -23,7 +23,11 @@ export const DEFAULT_SKILL_FACTORY = {
   id: "sf_" + Math.random().toString(16).slice(2),
   // Keep all slide-specific payloads nested so future slides are easy to add.
   slides: {
-    slide1: { ...DEFAULT_SKILL_FACTORY_SLIDE1 }
+    slide1: { ...DEFAULT_SKILL_FACTORY_SLIDE1 },
+    // Slide 2 is image-only metrics (PNG/JPG). Stored as object URLs for preview/export.
+    slide2: {
+      metricsImages: []
+    }
   }
 };
 
@@ -43,6 +47,9 @@ export function createDefaultSkillFactory() {
         teamMembers: DEFAULT_SKILL_FACTORY_SLIDE1.teamMembers.map((m) => ({ ...m })),
         prevWeekActivities: [...DEFAULT_SKILL_FACTORY_SLIDE1.prevWeekActivities],
         currentWeekActivities: [...DEFAULT_SKILL_FACTORY_SLIDE1.currentWeekActivities]
+      },
+      slide2: {
+        metricsImages: []
       }
     }
   };
@@ -87,6 +94,18 @@ export function loadSkillFactoriesFromStorage() {
             currentWeekActivities: Array.isArray(f?.slides?.slide1?.currentWeekActivities)
               ? f.slides.slide1.currentWeekActivities
               : base.slides.slide1.currentWeekActivities
+          },
+          slide2: {
+            ...base.slides.slide2,
+            ...(f?.slides?.slide2 || {}),
+            metricsImages: Array.isArray(f?.slides?.slide2?.metricsImages)
+              ? f.slides.slide2.metricsImages.map((img) => ({
+                  objectUrl: (img?.objectUrl || "").toString(),
+                  fileName: (img?.fileName || "").toString(),
+                  width: Number(img?.width) || 0,
+                  height: Number(img?.height) || 0
+                }))
+              : base.slides.slide2.metricsImages
           }
         }
       };

@@ -529,6 +529,126 @@ async function addSkillFactorySlide1(pptx, factory) {
   });
 }
 
+async function addSkillFactorySlide2(pptx, factory) {
+  /**
+   * Skill Factory Slide 2: image-only metrics.
+   * Layout matches the reference:
+   * - Header text (factory name)
+   * - Two square “donut” zones on left, one wide chart zone on right
+   * - Bottom blue band
+   * - If more than 3 images are provided, additional images are placed in a simple grid above the band.
+   */
+  const SLIDE_W = 13.333;
+  const SLIDE_H = 7.5;
+
+  const s = pptx.addSlide();
+  s.background = { color: "FFFFFF" };
+
+  const sf1 = factory?.slides?.slide1 || {};
+  const sf2 = factory?.slides?.slide2 || {};
+  const factoryName = (sf1.factoryName || "").trim() || "Skill Factory";
+
+  // Title row
+  s.addText(factoryName, {
+    x: 0.6,
+    y: 0.45,
+    w: SLIDE_W - 1.2,
+    h: 0.4,
+    fontSize: 14,
+    bold: true,
+    color: "111827"
+  });
+
+  // Bottom band (blue)
+  const bandH = 1.1;
+  s.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: SLIDE_H - bandH,
+    w: SLIDE_W,
+    h: bandH,
+    fill: { color: "2F78A8" },
+    line: { color: "2F78A8" }
+  });
+
+  const images = Array.isArray(sf2.metricsImages) ? sf2.metricsImages : [];
+
+  // Main 3-slot layout area (above band)
+  const topY = 1.05;
+  const contentH = SLIDE_H - bandH - topY - 0.25;
+  const gap = 0.35;
+
+  const leftW = 3.1;
+  const donutSize = 2.9;
+
+  const donut1 = { x: 0.85, y: topY + 0.35, w: donutSize, h: donutSize };
+  const donut2 = { x: donut1.x + leftW, y: donut1.y, w: donutSize, h: donutSize };
+  const chart = { x: donut2.x + leftW + gap, y: topY + 0.3, w: SLIDE_W - (donut2.x + leftW + gap) - 0.85, h: 3.2 };
+
+  const place = async (imgMeta, box, round = false) => {
+    if (!imgMeta?.objectUrl) {
+      addImageMissingPlaceholder(s, box);
+      return;
+    }
+    try {
+      const dataUrl = await objectUrlToDataUrl(imgMeta.objectUrl);
+      const fitted = fitSize({
+        srcW: imgMeta.width || 1600,
+        srcH: imgMeta.height || 900,
+        maxW: box.w,
+        maxH: box.h
+      });
+      const x = box.x + (box.w - fitted.w) / 2;
+      const y = box.y + (box.h - fitted.h) / 2;
+
+      // Optional subtle container
+      s.addShape(pptx.ShapeType.roundRect, {
+        x: box.x,
+        y: box.y,
+        w: box.w,
+        h: box.h,
+        fill: { color: "F9FAFB" },
+        line: { color: "D1D5DB", width: 0.7 },
+        radius: round ? Math.min(box.w, box.h) / 2 : 0.16
+      });
+
+      s.addImage({ data: dataUrl, x, y, w: fitted.w, h: fitted.h });
+    } catch (_e) {
+      addImageMissingPlaceholder(s, box);
+    }
+  };
+
+  await place(images[0], donut1, true);
+  await place(images[1], donut2, true);
+  await place(images[2], chart, false);
+
+  // Extra images: grid placed under the main area (still above band), if space allows.
+  const extras = images.slice(3);
+  if (extras.length) {
+    const gridTop = Math.min(chart.y + chart.h + 0.25, donut1.y + donut1.h + 0.35);
+    const gridH = Math.max(0, SLIDE_H - bandH - gridTop - 0.25);
+
+    if (gridH > 0.6) {
+      const cols = 3;
+      const cellGap = 0.18;
+      const usableW = SLIDE_W - 1.2;
+      const cellW = (usableW - cellGap * (cols - 1)) / cols;
+      const cellH = Math.min(1.25, gridH / 2);
+
+      for (let i = 0; i < Math.min(extras.length, 6); i++) {
+        const r = Math.floor(i / cols);
+        const c = i % cols;
+        const box = {
+          x: 0.6 + c * (cellW + cellGap),
+          y: gridTop + r * (cellH + cellGap),
+          w: cellW,
+          h: cellH
+        };
+        await place(extras[i], box, false);
+      }
+    }
+  }
+}
+
 async function addLastSlide(pptx, last) {
   // 13.333 x 7.5 inches for LAYOUT_WIDE
   const SLIDE_W = 13.333;
@@ -671,10 +791,11 @@ export async function exportSlidesToPptx({ cover, last, skillFactories, slides, 
   // Slide 1: Global Cover (always)
   await addCoverSlide(pptx, cover);
 
-  // Skill Factory Slide 1s
+  // Skill Factory slides (Slide 1 then Slide 2 per factory)
   const safeFactories = Array.isArray(skillFactories) ? skillFactories : [];
   for (const f of safeFactories) {
     await addSkillFactorySlide1(pptx, f);
+    await addSkillFactorySlide2(pptx, f);
   }
 
   // Normal content slides (0..n)

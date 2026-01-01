@@ -41,9 +41,10 @@ export default function SlideForm({
   last,
   onLastChange,
   skillFactory,
-  onSkillFactorySlide1Change
+  onSkillFactorySlide1Change,
+  onSkillFactorySlide2Change
 }) {
-  /** Form used to edit the currently selected slide OR pinned Global Cover OR pinned Global Last Page OR Skill Factory Slide 1. */
+  /** Form used to edit the currently selected slide OR pinned Global Cover OR pinned Global Last Page OR Skill Factory Slide 1/2. */
   const titleId = useId();
   const subtitleId = useId();
   const taglineId = useId();
@@ -63,6 +64,10 @@ export default function SlideForm({
   const sfLowlightsSeedId = useId();
   const sfPrevWeekSeedId = useId();
   const sfCurrentWeekSeedId = useId();
+
+  // Skill Factory Slide 2 editor ids/refs MUST be defined unconditionally (rules-of-hooks).
+  const sf2UploadId = useId();
+  const sf2FileInputRef = useRef(null);
 
   const preset = useMemo(() => {
     const pid = slide?.theme?.backgroundPresetId || "surface";
@@ -796,6 +801,157 @@ export default function SlideForm({
 
             <div className="helper">
               Slide preview updates live. Export will place Skill Factory slides after the Global Cover.
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ---- Skill Factory Slide 2 editor (image-only metrics) ----
+  if (mode === "skillFactorySlide2") {
+    const slide2 = skillFactory?.slides?.slide2;
+
+    if (!slide2) {
+      return (
+        <section className="card" aria-label="Skill Factory Slide 2 editor">
+          <div className="cardHeader">
+            <h2 className="cardTitle">Skill Factory – Slide 2</h2>
+            <p className="cardHint">Skill Factory data not available.</p>
+          </div>
+          <div className="cardBody">
+            <div className="helper helperError">Unable to load Skill Factory Slide 2 state.</div>
+          </div>
+        </section>
+      );
+    }
+
+    const metrics = Array.isArray(slide2.metricsImages) ? slide2.metricsImages : [];
+
+    const update = (patch) => onSkillFactorySlide2Change?.({ ...slide2, ...patch });
+
+    const onAddFiles = (filesList) => {
+      const files = Array.from(filesList || []);
+      if (!files.length) return;
+
+      // Image-only: accept PNG/JPG (do not parse CSV/JSON).
+      const accepted = files.filter((f) => {
+        const t = (f?.type || "").toLowerCase();
+        return t === "image/png" || t === "image/jpeg" || t === "image/jpg";
+      });
+
+      accepted.forEach((file) => {
+        const objectUrl = URL.createObjectURL(file);
+
+        const img = new Image();
+        img.onload = () => {
+          update({
+            metricsImages: [
+              ...metrics,
+              { objectUrl, fileName: file.name, width: img.naturalWidth, height: img.naturalHeight }
+            ]
+          });
+        };
+        img.onerror = () => {
+          update({
+            metricsImages: [...metrics, { objectUrl, fileName: file.name, width: 0, height: 0 }]
+          });
+        };
+        img.src = objectUrl;
+      });
+
+      // Allow uploading same file again if needed.
+      if (sf2FileInputRef.current) sf2FileInputRef.current.value = "";
+    };
+
+    const removeAt = (idx) => {
+      const next = [...metrics];
+      const removed = next[idx];
+      if (removed?.objectUrl) URL.revokeObjectURL(removed.objectUrl);
+      next.splice(idx, 1);
+      update({ metricsImages: next });
+    };
+
+    const clearAll = () => {
+      metrics.forEach((m) => {
+        if (m?.objectUrl) URL.revokeObjectURL(m.objectUrl);
+      });
+      if (sf2FileInputRef.current) sf2FileInputRef.current.value = "";
+      update({ metricsImages: [] });
+    };
+
+    return (
+      <section className="card" aria-label="Skill Factory Slide 2 editor">
+        <div className="cardHeader">
+          <h2 className="cardTitle">Skill Factory – Slide 2</h2>
+          <p className="cardHint">Upload one or more metrics screenshots (PNG/JPG). These stay local (object URLs).</p>
+        </div>
+
+        <div className="cardBody">
+          <div className="row">
+            <div>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                <label className="label" htmlFor={sf2UploadId} style={{ margin: 0 }}>
+                  Metrics images (PNG/JPG)
+                </label>
+
+                {metrics.length ? (
+                  <button type="button" className="btn btnSmall btnGhost" onClick={clearAll}>
+                    Clear all
+                  </button>
+                ) : null}
+              </div>
+
+              <input
+                id={sf2UploadId}
+                ref={sf2FileInputRef}
+                className="input"
+                type="file"
+                accept="image/png,image/jpeg"
+                multiple
+                onChange={(e) => onAddFiles(e.target.files)}
+                aria-label="Upload Skill Factory metrics images (local only)"
+              />
+              <div className="helper">
+                Tip: Use screenshots similar to the reference (donut charts + bar chart). No CSV/JSON parsing.
+              </div>
+
+              {metrics.length ? (
+                <div className="sf2UploadGrid" aria-label="Uploaded metrics images">
+                  {metrics.map((m, idx) => (
+                    <div key={`${m.objectUrl}_${idx}`} className="sf2UploadCard">
+                      <div className="sf2UploadTop">
+                        <div className="sf2UploadName" title={m.fileName || "metrics image"}>
+                          {m.fileName || `metrics_${idx + 1}`}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btnSmall btnGhost"
+                          onClick={() => removeAt(idx)}
+                          aria-label={`Remove metrics image ${idx + 1}`}
+                          title="Remove"
+                        >
+                          −
+                        </button>
+                      </div>
+                      <div className="sf2UploadImgWrap">
+                        <img className="sf2UploadImg" src={m.objectUrl} alt={m.fileName ? `Metrics: ${m.fileName}` : "Metrics"} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="coverUploadEmpty">
+                  <div className="badge">Required for Slide 2</div>
+                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
+                    Upload one or more metrics images to populate Skill Factory Slide 2.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="helper">
+              Slide preview updates live. Export will insert Skill Factory Slide 2 directly after Skill Factory Slide 1.
             </div>
           </div>
         </div>

@@ -37,7 +37,10 @@ export default function PresentationPreviewModal({
     const safeSlides = Array.isArray(slides) ? slides : [];
     return [
       { id: "__cover__", kind: "cover", data: cover },
-      ...safeFactories.map((f) => ({ id: `__sf1__${f.id}`, kind: "skillFactorySlide1", data: f })),
+      ...safeFactories.flatMap((f) => [
+        { id: `__sf1__${f.id}`, kind: "skillFactorySlide1", data: f },
+        { id: `__sf2__${f.id}`, kind: "skillFactorySlide2", data: f }
+      ]),
       ...safeSlides.map((s) => ({ id: s.id, kind: "slide", data: s })),
       { id: "__last__", kind: "last", data: last }
     ];
@@ -179,7 +182,9 @@ export default function PresentationPreviewModal({
                   ? "Global Last Page"
                   : active?.kind === "skillFactorySlide1"
                     ? "Skill Factory – Slide 1"
-                    : "Content slide"}
+                    : active?.kind === "skillFactorySlide2"
+                      ? "Skill Factory – Slide 2"
+                      : "Content slide"}
             </div>
           </div>
 
@@ -247,7 +252,9 @@ export default function PresentationPreviewModal({
                       ? "Last"
                       : item.kind === "skillFactorySlide1"
                         ? "Skill Factory – Slide 1"
-                        : `Slide ${idx + 1}`;
+                        : item.kind === "skillFactorySlide2"
+                          ? "Skill Factory – Slide 2"
+                          : `Slide ${idx + 1}`;
 
                 return (
                   <button
@@ -294,12 +301,20 @@ export default function PresentationPreviewModal({
                 <div className="ppSlideCard">
                   <SlidePreview
                     mode={
-                      active.kind === "cover" ? "cover" : active.kind === "last" ? "last" : active.kind === "skillFactorySlide1" ? "skillFactorySlide1" : "slide"
+                      active.kind === "cover"
+                        ? "cover"
+                        : active.kind === "last"
+                          ? "last"
+                          : active.kind === "skillFactorySlide1"
+                            ? "skillFactorySlide1"
+                            : active.kind === "skillFactorySlide2"
+                              ? "skillFactorySlide2"
+                              : "slide"
                     }
                     cover={cover}
                     last={last}
                     slide={active.kind === "slide" ? active.data : null}
-                    skillFactory={active.kind === "skillFactorySlide1" ? active.data : null}
+                    skillFactory={active.kind === "skillFactorySlide1" || active.kind === "skillFactorySlide2" ? active.data : null}
                     slideIndex={activeIndex}
                     totalSlides={total}
                   />
