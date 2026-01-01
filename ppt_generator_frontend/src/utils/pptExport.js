@@ -8,7 +8,11 @@ function hexToPptxColor(hex) {
   const cleaned = (hex || "").replace("#", "").trim();
   if (cleaned.length === 3) {
     // Expand short form e.g. #abc -> aabbcc
-    return cleaned.split("").map((c) => c + c).join("").toUpperCase();
+    return cleaned
+      .split("")
+      .map((c) => c + c)
+      .join("")
+      .toUpperCase();
   }
   return cleaned.padEnd(6, "0").slice(0, 6).toUpperCase();
 }
@@ -22,11 +26,140 @@ function fitSize({ srcW, srcH, maxW, maxH }) {
   return { w: srcW * ratio, h: srcH * ratio };
 }
 
+function splitLines(text) {
+  return (text || "")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+async function objectUrlToDataUrl(objectUrl) {
+  const resp = await fetch(objectUrl);
+  const blob = await resp.blob();
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read image"));
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+  return dataUrl;
+}
+
+async function addCoverSlide(pptx, cover) {
+  // 13.333 x 7.5 inches for LAYOUT_WIDE
+  const SLIDE_W = 13.333;
+  const SLIDE_H = 7.5;
+
+  const s = pptx.addSlide();
+
+  // If an image exists, use it as full-bleed background.
+  if (cover?.backgroundImage?.objectUrl) {
+    try {
+      const dataUrl = await objectUrlToDataUrl(cover.backgroundImage.objectUrl);
+
+      const fitted = fitSize({
+        srcW: cover.backgroundImage.width || 1600,
+        srcH: cover.backgroundImage.height || 900,
+        maxW: SLIDE_W,
+        maxH: SLIDE_H
+      });
+
+      // Center-crop style: we fill by scaling up so that it covers the slide.
+      // PptxGenJS doesn't crop easily; we approximate by using "contain" sizing to fill.
+      // Use full-bleed with slide dimensions for simplicity (works well for wide photos).
+      s.addImage({ data: dataUrl, x: 0, y: 0, w: SLIDE_W, h: SLIDE_H });
+    } catch (_e) {
+      // If background image fails, fall back to a solid background.
+      s.background = { color: "FFFFFF" };
+    }
+  } else {
+    s.background = { color: "FFFFFF" };
+  }
+
+  // Left overlay panel (approximate screenshot: deep blue with slight transparency)
+  const panelW = 6.2;
+  const primary = hexToPptxColor(cover?.primaryColor || "#2563EB");
+
+  s.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: 0,
+    w: panelW,
+    h: SLIDE_H,
+    fill: { color: primary, transparency: 15 },
+    line: { color: primary, transparency: 100 }
+  });
+
+  // Text block
+  const title = (cover?.title || "").trim();
+  const subtitle = (cover?.subtitle || "").trim();
+  const taglineLines = splitLines(cover?.tagline);
+
+  const x = 0.6;
+  const y = 1.55;
+
+  // Title (bold)
+  s.addText(title, {
+    x,
+    y,
+    w: panelW - 1.2,
+    h: 0.7,
+    fontSize: 30,
+    bold: true,
+    color: "FFFFFF"
+  });
+
+  // Subtitle (smaller)
+  if (subtitle) {
+    s.addText(subtitle, {
+      x,
+      y: y + 0.7,
+      w: panelW - 1.2,
+      h: 0.5,
+      fontSize: 14,
+      color: "DDE7FF"
+    });
+  }
+
+  // Tagline (stacked lines)
+  if (taglineLines.length) {
+    s.addText(taglineLines.join("\n"), {
+      x,
+      y: y + 1.25,
+      w: panelW - 1.2,
+      h: 1.2,
+      fontSize: 13,
+      color: "DDE7FF"
+    });
+  }
+
+  // Small accent dot bottom-right similar to screenshot
+  const accent = hexToPptxColor(cover?.secondaryColor || "#F59E0B");
+  s.addShape(pptx.ShapeType.ellipse, {
+    x: SLIDE_W - 0.55,
+    y: SLIDE_H - 0.55,
+    w: 0.22,
+    h: 0.22,
+    fill: { color: accent },
+    line: { color: accent }
+  });
+
+  // Simple top-right "TATA" placeholder (no external asset required)
+  s.addText("TATA", {
+    x: SLIDE_W - 1.35,
+    y: 0.25,
+    w: 1.0,
+    h: 0.3,
+    fontSize: 12,
+    bold: true,
+    color: "FFFFFF"
+  });
+}
+
 // PUBLIC_INTERFACE
-export async function exportSlidesToPptx(slides) {
+export async function exportSlidesToPptx({ cover, slides }) {
   /**
    * Generate a PPTX file from slide data and trigger download (client-side).
-   * @param {Array} slides - slide objects from state.
+   * @param {{cover: Object, slides: Array}} payload - cover + slide objects from state.
    * @returns {Promise<void>}
    */
   const pptx = new PptxGenJS();
@@ -43,6 +176,10 @@ export async function exportSlidesToPptx(slides) {
   const rightW = SLIDE_W - (M * 2 + leftW);
   const topY = 0.8;
 
+  // Slide 1: Global Cover
+  await addCoverSlide(pptx, cover);
+
+  // Remaining slides
   for (const slideData of slides) {
     const s = pptx.addSlide();
 
@@ -96,15 +233,7 @@ export async function exportSlidesToPptx(slides) {
     // Optional image (right column)
     if (slideData.image?.objectUrl) {
       try {
-        // PptxGenJS needs data URI or base64; fetch object URL and convert.
-        const resp = await fetch(slideData.image.objectUrl);
-        const blob = await resp.blob();
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onerror = () => reject(new Error("Failed to read image"));
-          reader.onload = () => resolve(reader.result);
-          reader.readAsDataURL(blob);
-        });
+        const dataUrl = await objectUrlToDataUrl(slideData.image.objectUrl);
 
         const maxW = rightW;
         const maxH = SLIDE_H - 2.0;
@@ -125,7 +254,7 @@ export async function exportSlidesToPptx(slides) {
           w: fitted.w,
           h: fitted.h
         });
-      } catch (e) {
+      } catch (_e) {
         // If image fails, ignore it so export still works
         s.addText("(Image failed to embed)", {
           x: M + leftW + 0.3,

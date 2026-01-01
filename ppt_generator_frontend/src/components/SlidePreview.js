@@ -1,15 +1,23 @@
 import React, { useMemo } from "react";
 import { THEME_PRESETS } from "../utils/slideModel";
 
+function normalizeMultiline(text) {
+  return (text || "")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 // PUBLIC_INTERFACE
-export default function SlidePreview({ slide, slideIndex, totalSlides }) {
-  /** Center preview "canvas" for the selected slide. */
+export default function SlidePreview({ mode = "slide", cover, slide, slideIndex, totalSlides }) {
+  /** Center preview "canvas" for the selected item (Global Cover or a regular slide). */
   const preset = useMemo(() => {
     const pid = slide?.theme?.backgroundPresetId || "surface";
     return THEME_PRESETS[pid] || THEME_PRESETS.surface;
   }, [slide?.theme?.backgroundPresetId]);
 
-  if (!slide) {
+  // Empty state
+  if (mode !== "cover" && !slide) {
     return (
       <section className="card" aria-label="Slide preview">
         <div className="cardHeader">
@@ -35,13 +43,13 @@ export default function SlidePreview({ slide, slideIndex, totalSlides }) {
     );
   }
 
-  const textColor = slide.theme?.textColor || preset.text;
+  const headerLabel = mode === "cover" ? "Cover Preview" : "Preview";
 
   return (
     <section className="card" aria-label="Slide preview">
       <div className="cardHeader">
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-          <h2 className="cardTitle">Preview</h2>
+          <h2 className="cardTitle">{headerLabel}</h2>
           <span className="kbdHint" aria-label="Slide position">
             Slide {slideIndex + 1} of {totalSlides}
           </span>
@@ -50,135 +58,189 @@ export default function SlidePreview({ slide, slideIndex, totalSlides }) {
       </div>
 
       <div className="cardBody">
-        <div
-          style={{
-            width: "100%",
-            aspectRatio: "16 / 9",
-            borderRadius: 18,
-            border: "1px solid rgba(17,24,39,0.12)",
-            overflow: "hidden",
-            background: preset.previewGradient,
-            position: "relative",
-            boxShadow: "0 20px 45px rgba(17,24,39,0.08)",
-            transition: "transform 200ms ease, box-shadow 200ms ease"
-          }}
-        >
-          {/* Inner surface mimicking slide background */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: preset.background,
-              opacity: 0.92
-            }}
-          />
-
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              padding: 24,
-              color: textColor,
-              display: "grid",
-              gridTemplateColumns: "1.25fr 0.75fr",
-              gap: 18
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
-                {slide.title?.trim() ? slide.title : "Untitled slide"}
-              </div>
-              {slide.subtitle?.trim() ? (
-                <div style={{ marginTop: 10, fontSize: 15, opacity: 0.9, lineHeight: 1.3 }}>
-                  {slide.subtitle}
-                </div>
-              ) : null}
-
-              <ul style={{ marginTop: 16, paddingLeft: 18, display: "grid", gap: 8 }}>
-                {(slide.bullets || [])
-                  .map((b) => (b || "").trim())
-                  .filter(Boolean)
-                  .slice(0, 8)
-                  .map((b, idx) => (
-                    <li key={idx} style={{ fontSize: 14, lineHeight: 1.35, opacity: 0.95 }}>
-                      {b}
-                    </li>
-                  ))}
-              </ul>
-
-              {(slide.bullets || []).map((b) => (b || "").trim()).filter(Boolean).length === 0 ? (
-                <div style={{ marginTop: 14, fontSize: 13, opacity: 0.75 }}>
-                  Add bullet points in the editor to populate this area.
-                </div>
-              ) : null}
-            </div>
-
-            <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
-              {slide.image?.objectUrl ? (
+        {mode === "cover" ? (
+          <div className="coverPreviewFrame">
+            <div className="coverPreviewBg">
+              {cover?.backgroundImage?.objectUrl ? (
                 <div
+                  className="coverPreviewHero"
                   style={{
-                    borderRadius: 14,
-                    border: "1px solid rgba(17,24,39,0.12)",
-                    overflow: "hidden",
-                    background: "rgba(17,24,39,0.04)"
+                    backgroundImage: `url(${cover.backgroundImage.objectUrl})`
                   }}
-                >
-                  <img
-                    src={slide.image.objectUrl}
-                    alt={slide.image.fileName ? `Slide image: ${slide.image.fileName}` : "Slide image"}
-                    style={{ display: "block", width: "100%", height: "auto" }}
-                  />
-                </div>
+                  aria-label="Cover background image"
+                />
               ) : (
-                <div
-                  style={{
-                    borderRadius: 14,
-                    border: "1px dashed rgba(17,24,39,0.18)",
-                    padding: 14,
-                    background: "rgba(37,99,235,0.06)"
-                  }}
-                >
-                  <div className="badge">Optional</div>
-                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
-                    Add an image in the editor to show it here.
-                  </div>
-                </div>
+                <div className="coverPreviewHero coverPreviewHeroFallback" aria-label="Cover background placeholder" />
               )}
 
               <div
+                className="coverPreviewOverlay"
                 style={{
-                  borderRadius: 14,
-                  border: "1px solid rgba(17,24,39,0.10)",
-                  padding: 12,
-                  background: "rgba(255,255,255,0.55)",
-                  color: "#111827"
+                  ["--coverPrimary"]: cover?.primaryColor || "#2563EB",
+                  ["--coverSecondary"]: cover?.secondaryColor || "#F59E0B"
                 }}
-              >
-                <div style={{ fontSize: 12, fontWeight: 800 }}>Theme</div>
-                <div style={{ marginTop: 6, fontSize: 12, color: "#6b7280", lineHeight: 1.4 }}>
-                  Background: <strong>{preset.label}</strong>
-                  <br />
-                  Text: <strong>{textColor}</strong>
+              />
+
+              <div className="coverPreviewContent">
+                <div className="coverPreviewLeft">
+                  <div className="coverLockup">
+                    <div className="coverTitle">{cover?.title?.trim() ? cover.title : "Cover Title"}</div>
+                    {cover?.subtitle?.trim() ? <div className="coverSubtitle">{cover.subtitle}</div> : null}
+
+                    {normalizeMultiline(cover?.tagline).length ? (
+                      <div className="coverTagline">
+                        {normalizeMultiline(cover?.tagline).map((line, idx) => (
+                          <div key={idx}>{line}</div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="coverLeftFooter">
+                    <div className="coverMetaDot" aria-hidden="true" />
+                    <div className="coverMetaText">Ocean Professional • Global Cover</div>
+                  </div>
+                </div>
+
+                <div className="coverPreviewRight">
+                  <div className="coverBrandMark" title="Brand mark (preview placeholder)">
+                    <div className="coverBrandCircle">TATA</div>
+                    <div className="coverBrandText">TATA</div>
+                  </div>
+
+                  <div className="coverCornerAccent" aria-hidden="true" />
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Small corner mark */}
+        ) : (
+          // Normal slide preview (existing)
           <div
-            aria-hidden="true"
             style={{
-              position: "absolute",
-              right: 14,
-              bottom: 14,
-              width: 12,
-              height: 12,
-              borderRadius: 999,
-              background: "rgba(245,158,11,0.95)",
-              boxShadow: "0 6px 20px rgba(245,158,11,0.25)"
+              width: "100%",
+              aspectRatio: "16 / 9",
+              borderRadius: 18,
+              border: "1px solid rgba(17,24,39,0.12)",
+              overflow: "hidden",
+              background: preset.previewGradient,
+              position: "relative",
+              boxShadow: "0 20px 45px rgba(17,24,39,0.08)",
+              transition: "transform 200ms ease, box-shadow 200ms ease"
             }}
-          />
-        </div>
+          >
+            {/* Inner surface mimicking slide background */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: preset.background,
+                opacity: 0.92
+              }}
+            />
+
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                padding: 24,
+                color: slide.theme?.textColor || preset.text,
+                display: "grid",
+                gridTemplateColumns: "1.25fr 0.75fr",
+                gap: 18
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
+                  {slide.title?.trim() ? slide.title : "Untitled slide"}
+                </div>
+                {slide.subtitle?.trim() ? (
+                  <div style={{ marginTop: 10, fontSize: 15, opacity: 0.9, lineHeight: 1.3 }}>{slide.subtitle}</div>
+                ) : null}
+
+                <ul style={{ marginTop: 16, paddingLeft: 18, display: "grid", gap: 8 }}>
+                  {(slide.bullets || [])
+                    .map((b) => (b || "").trim())
+                    .filter(Boolean)
+                    .slice(0, 8)
+                    .map((b, idx) => (
+                      <li key={idx} style={{ fontSize: 14, lineHeight: 1.35, opacity: 0.95 }}>
+                        {b}
+                      </li>
+                    ))}
+                </ul>
+
+                {(slide.bullets || []).map((b) => (b || "").trim()).filter(Boolean).length === 0 ? (
+                  <div style={{ marginTop: 14, fontSize: 13, opacity: 0.75 }}>Add bullet points in the editor to populate this area.</div>
+                ) : null}
+              </div>
+
+              <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
+                {slide.image?.objectUrl ? (
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      border: "1px solid rgba(17,24,39,0.12)",
+                      overflow: "hidden",
+                      background: "rgba(17,24,39,0.04)"
+                    }}
+                  >
+                    <img
+                      src={slide.image.objectUrl}
+                      alt={slide.image.fileName ? `Slide image: ${slide.image.fileName}` : "Slide image"}
+                      style={{ display: "block", width: "100%", height: "auto" }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      border: "1px dashed rgba(17,24,39,0.18)",
+                      padding: 14,
+                      background: "rgba(37,99,235,0.06)"
+                    }}
+                  >
+                    <div className="badge">Optional</div>
+                    <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
+                      Add an image in the editor to show it here.
+                    </div>
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    borderRadius: 14,
+                    border: "1px solid rgba(17,24,39,0.10)",
+                    padding: 12,
+                    background: "rgba(255,255,255,0.55)",
+                    color: "#111827"
+                  }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 800 }}>Theme</div>
+                  <div style={{ marginTop: 6, fontSize: 12, color: "#6b7280", lineHeight: 1.4 }}>
+                    Background: <strong>{preset.label}</strong>
+                    <br />
+                    Text: <strong>{slide.theme?.textColor || preset.text}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Small corner mark */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                right: 14,
+                bottom: 14,
+                width: 12,
+                height: 12,
+                borderRadius: 999,
+                background: "rgba(245,158,11,0.95)",
+                boxShadow: "0 6px 20px rgba(245,158,11,0.25)"
+              }}
+            />
+          </div>
+        )}
       </div>
     </section>
   );

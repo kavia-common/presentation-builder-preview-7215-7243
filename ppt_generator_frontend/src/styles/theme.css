@@ -309,3 +309,197 @@ a {
   background: var(--ocean-border);
   margin: 12px 0;
 }
+
+/* =========================
+   Global Cover (Ocean Pro)
+   ========================= */
+:root {
+  --cover-title-size: 30px;
+  --cover-subtitle-size: 14px;
+  --cover-tagline-size: 13px;
+
+  --cover-pad: 26px;
+  --cover-left-w: 48%;
+  --cover-overlay-alpha: 0.72;
+}
+
+.coverPreviewFrame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(249, 250, 251, 1));
+  box-shadow: 0 20px 45px rgba(17, 24, 39, 0.08);
+}
+
+.coverPreviewBg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.coverPreviewHero {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: saturate(1.03) contrast(1.05);
+}
+
+.coverPreviewHeroFallback {
+  background:
+    linear-gradient(120deg, rgba(37, 99, 235, 0.08), rgba(249, 250, 251, 0.92)),
+    radial-gradient(800px 340px at 70% 40%, rgba(245, 158, 11, 0.12), rgba(255, 255, 255, 0));
+}
+
+.coverPreviewOverlay {
+  --coverPrimary: var(--ocean-primary);
+  --coverSecondary: var(--ocean-secondary);
+
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--coverPrimary) calc(var(--cover-overlay-alpha) * 100%), transparent) 0%,
+      color-mix(in srgb, var(--coverPrimary) calc((var(--cover-overlay-alpha) - 0.12) * 100%), transparent) var(--cover-left-w),
+      rgba(0, 0, 0, 0) 62%
+    ),
+    radial-gradient(900px 420px at 18% 58%, rgba(245, 158, 11, 0.18), rgba(0, 0, 0, 0));
+}
+
+.coverPreviewContent {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: var(--cover-left-w) 1fr;
+  padding: var(--cover-pad);
+}
+
+.coverPreviewLeft {
+  display: grid;
+  align-content: center;
+  gap: 18px;
+  color: #ffffff;
+  padding-right: 18px;
+}
+
+.coverLockup {
+  display: grid;
+  gap: 8px;
+}
+
+.coverTitle {
+  font-size: clamp(22px, 2.6vw, var(--cover-title-size));
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.coverSubtitle {
+  font-size: clamp(12px, 1.4vw, var(--cover-subtitle-size));
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.90);
+}
+
+.coverTagline {
+  margin-top: 14px;
+  display: grid;
+  gap: 4px;
+  font-size: clamp(11px, 1.25vw, var(--cover-tagline-size));
+  line-height: 1.35;
+  color: rgba(225, 231, 255, 0.90);
+}
+
+.coverLeftFooter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  opacity: 0.9;
+}
+
+.coverMetaDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.95);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.25);
+}
+
+.coverMetaText {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.coverPreviewRight {
+  position: relative;
+}
+
+.coverBrandMark {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+}
+
+.coverBrandCircle {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.coverBrandText {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.coverCornerAccent {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.95);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.25);
+}
+
+/* Cover editor upload preview blocks */
+.coverUploadPreview {
+  margin-top: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  overflow: hidden;
+  background: rgba(17, 24, 39, 0.02);
+}
+
+.coverUploadPreviewImg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.coverUploadEmpty {
+  margin-top: 10px;
+  border-radius: 14px;
+  border: 1px dashed rgba(17, 24, 39, 0.18);
+  padding: 14px;
+  background: rgba(37, 99, 235, 0.06);
+}

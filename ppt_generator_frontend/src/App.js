@@ -8,23 +8,35 @@ import SlidePreview from "./components/SlidePreview";
 
 import { createEmptySlide, validateSlides } from "./utils/slideModel";
 import { exportSlidesToPptx } from "./utils/pptExport";
+import { createDefaultCover, loadCoverFromStorage, revokeCoverObjectUrl, saveCoverToStorage } from "./utils/coverModel";
+
+const GLOBAL_COVER_ID = "__global_cover__";
 
 // PUBLIC_INTERFACE
 function App() {
   /** Main UI entry point: slide editor + preview + export (frontend-only). */
+  const [globalCoverSlide, setGlobalCoverSlide] = useState(() => loadCoverFromStorage() || createDefaultCover());
   const [slides, setSlides] = useState(() => [createEmptySlide()]);
-  const [selectedId, setSelectedId] = useState(() => (slides[0] ? slides[0].id : ""));
+  const [selectedId, setSelectedId] = useState(() => GLOBAL_COVER_ID);
+
+  const isCoverSelected = selectedId === GLOBAL_COVER_ID;
+
+  // Persist cover changes (excluding object URL).
+  useEffect(() => {
+    saveCoverToStorage(globalCoverSlide);
+  }, [globalCoverSlide]);
 
   // Keep selection valid if slides change (e.g., delete).
   useEffect(() => {
+    if (isCoverSelected) return;
     if (slides.length === 0) {
-      setSelectedId("");
+      setSelectedId(GLOBAL_COVER_ID);
       return;
     }
     if (!selectedId || !slides.some((s) => s.id === selectedId)) {
-      setSelectedId(slides[0].id);
+      setSelectedId(GLOBAL_COVER_ID);
     }
-  }, [slides, selectedId]);
+  }, [slides, selectedId, isCoverSelected]);
 
   // Cleanup: revoke object URLs on unmount.
   useEffect(() => {
@@ -32,6 +44,7 @@ function App() {
       slides.forEach((s) => {
         if (s.image?.objectUrl) URL.revokeObjectURL(s.image.objectUrl);
       });
+      revokeCoverObjectUrl(globalCoverSlide);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -40,12 +53,15 @@ function App() {
   const selectedSlide = selectedIndex >= 0 ? slides[selectedIndex] : null;
 
   const validation = useMemo(() => validateSlides(slides), [slides]);
+
+  // Cover has its own title but we won't block export on cover title.
   const canGenerate = slides.length > 0 && validation.valid;
 
   const helperText = useMemo(() => {
     if (slides.length === 0) return "Add at least one slide to export.";
     if (!validation.valid) {
-      const nums = validation.invalidIndices.map((i) => i + 1).join(", ");
+      const nums = validation.invalidIndices.map((i) => i + 2).join(", ");
+      // +2 because slide #1 is the global cover
       return `Please add a title to slide(s): ${nums}.`;
     }
     return "Ready to generate.";
@@ -79,10 +95,33 @@ function App() {
     setSlides((prev) => prev.map((s) => (s.id === updatedSlide.id ? updatedSlide : s)));
   };
 
+  const updateCover = (updatedCover) => {
+    setGlobalCoverSlide(updatedCover);
+  };
+
   const onGenerate = async () => {
     if (!canGenerate) return;
-    await exportSlidesToPptx(slides);
+    await exportSlidesToPptx({ cover: globalCoverSlide, slides });
   };
+
+  const previewProps = useMemo(() => {
+    if (isCoverSelected) {
+      return {
+        mode: "cover",
+        cover: globalCoverSlide,
+        slide: null,
+        slideIndex: 0,
+        totalSlides: slides.length + 1
+      };
+    }
+    return {
+      mode: "slide",
+      cover: globalCoverSlide,
+      slide: selectedSlide,
+      slideIndex: Math.max(0, selectedIndex) + 1, // +1 because cover is slide 1
+      totalSlides: slides.length + 1
+    };
+  }, [isCoverSelected, globalCoverSlide, slides.length, selectedSlide, selectedIndex]);
 
   return (
     <div className="appShell">
@@ -118,6 +157,7 @@ function App() {
         <div className="container">
           <div className="grid">
             <SlideList
+              globalCover={{ id: GLOBAL_COVER_ID, data: globalCoverSlide }}
               slides={slides}
               selectedId={selectedId}
               onSelect={setSelectedId}
@@ -127,10 +167,16 @@ function App() {
               onMoveDown={(idx) => moveSlide(idx, idx + 1)}
             />
 
-            <SlidePreview slide={selectedSlide} slideIndex={Math.max(0, selectedIndex)} totalSlides={slides.length} />
+            <SlidePreview {...previewProps} />
 
             <div style={{ display: "grid", gap: 16 }}>
-              <SlideForm slide={selectedSlide} onChange={updateSelected} />
+              <SlideForm
+                mode={isCoverSelected ? "cover" : "slide"}
+                slide={isCoverSelected ? null : selectedSlide}
+                cover={globalCoverSlide}
+                onChange={updateSelected}
+                onCoverChange={updateCover}
+              />
 
               <section className="card" aria-label="How to use">
                 <div className="cardHeader">
@@ -139,6 +185,7 @@ function App() {
                 </div>
                 <div className="cardBody">
                   <ol style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8, color: "#111827", fontSize: 13, lineHeight: 1.5 }}>
+                    <li>Edit the fixed <strong>Global Cover</strong> (slide 1) for title, subtitle, tagline and background.</li>
                     <li>Add slides with <strong>+ Add</strong>.</li>
                     <li>Fill in a <strong>title</strong> (required), subtitle, bullets, and optional image.</li>
                     <li>Pick theme colors and confirm in <strong>Preview</strong>.</li>
