@@ -20,6 +20,8 @@ export default function SlideList({
   const lastSelected = selectedId === globalLast?.id;
 
   const factories = Array.isArray(skillFactories) ? skillFactories : [];
+  // Defensive: SlideList must never crash if slides prop is missing.
+  const safeSlides = Array.isArray(slides) ? slides : [];
   const factorySelectedId = selectedId?.startsWith("__skill_factory_slide1__:") ? selectedId.split(":")[1] : null;
 
   return (
@@ -202,7 +204,7 @@ export default function SlideList({
           )}
 
           {/* Normal slides */}
-          {slides.length === 0 ? (
+          {safeSlides.length === 0 ? (
             <li
               style={{
                 border: "1px dashed rgba(17,24,39,0.20)",
@@ -220,7 +222,7 @@ export default function SlideList({
               </div>
             </li>
           ) : (
-            slides.map((slide, idx) => {
+            safeSlides.map((slide, idx) => {
               const selected = slide.id === selectedId;
               const slideNumber = 2 + factories.length + idx; // cover=1; factories occupy 2..; normal start after
               return (
@@ -274,7 +276,7 @@ export default function SlideList({
                         type="button"
                         className="btn btnSmall btnGhost"
                         onClick={() => onMoveDown(idx)}
-                        disabled={idx === slides.length - 1}
+                        disabled={idx === safeSlides.length - 1}
                         aria-label={`Move slide ${slideNumber} down`}
                         title={idx === slides.length - 1 ? "Already at bottom" : "Move down"}
                       >

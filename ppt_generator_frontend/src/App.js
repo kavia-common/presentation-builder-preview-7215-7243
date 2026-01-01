@@ -398,6 +398,7 @@ function App() {
               globalCover={{ id: GLOBAL_COVER_ID, data: globalCoverSlide }}
               globalLast={{ id: GLOBAL_LAST_ID, data: globalLastSlide }}
               skillFactories={factories}
+              slides={slides}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onAdd={addSlide}
