@@ -2,12 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import "./App.css";
 import "./styles/theme.css";
 
-import SlideList from "./components/SlideList";
 import SlideForm from "./components/SlideForm";
 import SlidePreview from "./components/SlidePreview";
 import Toast from "./components/Toast";
 import PresentationPreviewModal from "./components/PresentationPreviewModal";
-import Breadcrumbs from "./components/Breadcrumbs";
 
 import { createEmptySlide, validateSlides } from "./utils/slideModel";
 import { exportSlidesToPptx } from "./utils/pptExport";
@@ -53,9 +51,66 @@ function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
+/**
+ * @typedef {object} SlideOption
+ * @property {string} value
+ * @property {string} label
+ * @property {boolean=} disabled
+ * @property {"separator"=} kind
+ */
+
+/** @returns {string} */
+function getFactoryDisplayName(factory, idx1Based) {
+  const n = factory?.slides?.slide1?.factoryName?.trim() || factory?.name?.trim?.() || `Skill Factory ${idx1Based}`;
+  return n;
+}
+
+/** @returns {SlideOption[]} */
+function buildSlideDropdownOptions({ factories, slides, globalCoverSlide, globalLastSlide }) {
+  const opts = [];
+
+  opts.push({ value: GLOBAL_COVER_ID, label: "Global Cover" });
+  opts.push({ value: "__sep__cover__", label: "—", disabled: true, kind: "separator" });
+
+  (Array.isArray(factories) ? factories : []).forEach((f, idx) => {
+    const baseName = getFactoryDisplayName(f, idx + 1);
+
+    // Group label is implemented as the prefix of each slide label (no nested <optgroup> so we can insert separators reliably).
+    opts.push({ value: `${SKILL_FACTORY_SLIDE1_PREFIX}${f.id}`, label: `${baseName} – Slide 1` });
+    opts.push({ value: `${SKILL_FACTORY_SLIDE2_PREFIX}${f.id}`, label: `${baseName} – Slide 2` });
+    opts.push({ value: `${SKILL_FACTORY_SLIDE3_PREFIX}${f.id}`, label: `${baseName} – Slide 3` });
+    opts.push({ value: `${SKILL_FACTORY_SLIDE4_PREFIX}${f.id}`, label: `${baseName} – Slide 4` });
+
+    // Separator between factories, but not after the last one (keeps the list compact).
+    if (idx !== factories.length - 1) {
+      opts.push({ value: `__sep__sf__${f.id}`, label: "—", disabled: true, kind: "separator" });
+    }
+  });
+
+  opts.push({ value: "__sep__normal__", label: "—", disabled: true, kind: "separator" });
+
+  const safeSlides = Array.isArray(slides) ? slides : [];
+  const normalStartNo = 2 + (Array.isArray(factories) ? factories.length : 0) * 4;
+
+  safeSlides.forEach((s, idx) => {
+    const n = normalStartNo + idx;
+    const title = s?.title?.trim() ? s.title : `Untitled slide ${n}`;
+    opts.push({ value: s.id, label: `Slide ${n} – ${title}` });
+  });
+
+  opts.push({ value: "__sep__last__", label: "—", disabled: true, kind: "separator" });
+  opts.push({ value: GLOBAL_LAST_ID, label: "Global Last Page" });
+
+  // Keep args referenced (avoid future lint unused if we expand labels)
+  void globalCoverSlide;
+  void globalLastSlide;
+
+  return opts;
+}
+
 // PUBLIC_INTERFACE
 function App() {
-  /** Main UI entry point: grouped slide hierarchy + side-by-side preview/editor + export (frontend-only). */
+  /** Main UI entry point: top slide dropdown + side-by-side preview/editor + export (frontend-only). */
   const [globalCoverSlide, setGlobalCoverSlide] = useState(() => loadCoverFromStorage() || createDefaultCover());
   const [globalLastSlide, setGlobalLastSlide] = useState(() => loadLastSlideFromStorage() || createDefaultLastSlide());
 
@@ -408,9 +463,8 @@ function App() {
     selectedFactoryId
   ]);
 
+  // Internal breadcrumbs retained for other components (e.g., modal); main header must stay minimal (dropdown only).
   const breadcrumbItems = useMemo(() => {
-    // Slide number semantics here follow the same deck ordering as SlideList / previewProps:
-    // Cover = #1, Skill Factory slides follow, then normal slides, then Last.
     const items = [{ label: "Cover", title: "Global Cover" }];
 
     if (isCoverSelected) return items;
@@ -419,10 +473,7 @@ function App() {
       const sfIndex = selectedFactoryId ? factories.findIndex((f) => f.id === selectedFactoryId) : -1;
       const displayFactoryIndex = sfIndex >= 0 ? sfIndex + 1 : 1;
 
-      const factoryName =
-        selectedFactory?.slides?.slide1?.factoryName?.trim() ||
-        selectedFactory?.name?.trim?.() ||
-        `Skill Factory ${displayFactoryIndex}`;
+      const factoryName = getFactoryDisplayName(selectedFactory, displayFactoryIndex);
 
       const sfSlideNo = isSkillFactorySlide4Selected ? 4 : isSkillFactorySlide3Selected ? 3 : isSkillFactorySlide2Selected ? 2 : 1;
 
@@ -442,14 +493,12 @@ function App() {
       return items;
     }
 
-    // Normal slide: show Slide N where N is deck slide number (Cover is Slide 1).
-    // Normal slides start at 2 + factories*4 (because cover is #1).
     const safeIdx = Math.max(0, Number.isFinite(selectedIndex) ? selectedIndex : 0);
     const slideNumber = 2 + factories.length * 4 + safeIdx;
     items.push({ label: `Slide ${slideNumber}`, title: `Content slide ${slideNumber}` });
     return items;
   }, [
-    factories,
+    factories.length,
     isCoverSelected,
     isLastSelected,
     isSkillFactorySlide1Selected,
@@ -461,14 +510,14 @@ function App() {
     selectedIndex
   ]);
 
-  // Ensure the side-by-side pane is visible when selection changes (helps when user scrolls left rail).
+  // Ensure the side-by-side pane is visible when selection changes (dropdown / any future navigation).
   useEffect(() => {
     rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
   }, [selectedId]);
 
   const generateDisabled = !canGenerate || isGenerating;
 
-  // Resizable divider handlers
+  // Resizable divider handlers (preserved).
   const startDrag = (e) => {
     e.preventDefault();
     dragStateRef.current.dragging = true;
@@ -495,6 +544,33 @@ function App() {
     window.addEventListener("mouseup", onUp);
   };
 
+  const slideDropdownOptions = useMemo(
+    () => buildSlideDropdownOptions({ factories, slides, globalCoverSlide, globalLastSlide }),
+    [factories, slides, globalCoverSlide, globalLastSlide]
+  );
+
+  // If selectedId is not present in options (e.g., removed factory), keep select controlled safely.
+  const dropdownValue = useMemo(() => {
+    const ok = slideDropdownOptions.some((o) => o.value === selectedId);
+    return ok ? selectedId : GLOBAL_COVER_ID;
+  }, [slideDropdownOptions, selectedId]);
+
+  // PUBLIC_INTERFACE
+  const handleDropdownChange = useCallback((e) => {
+    /** Update current selection from top dropdown and keep editor/preview in view. */
+    const next = e.target.value;
+    // Ignore separator rows (disabled options won't fire change in most browsers, but keep safe)
+    if (!next || next.startsWith("__sep__")) return;
+    setSelectedId(next);
+    // Extra nudge in case browser doesn't run the selection effect soon enough
+    window.requestAnimationFrame(() => {
+      rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+    });
+  }, []);
+
+  // Keep internal breadcrumbs "warm" (unused variable otherwise); other components may rely on the same memo logic pattern.
+  void breadcrumbItems;
+
   return (
     <div className="appShell">
       <Toast toast={toast} onClose={() => setToast((t) => ({ ...t, open: false }))} />
@@ -512,69 +588,32 @@ function App() {
         fileNameHint={buildSuggestedFileName()}
       />
 
-      <header className="appHeader">
-        <div className="container headerInner">
-          <div className="headerTitle">
-            <h1>PPT Generator</h1>
-            <p>Create slides, preview instantly, then download a .pptx — no backend required.</p>
-          </div>
-
-          <div className="headerActions">
-            <span className="badge" title="Ocean Professional theme">
-              Ocean Professional
-            </span>
-            <button className="btn btnSecondary" type="button" onClick={addSlide} disabled={isGenerating} aria-disabled={isGenerating}>
-              + Add slide
-            </button>
-
-            <button
-              className="btn"
-              type="button"
-              onClick={onGenerate}
-              disabled={generateDisabled}
-              aria-disabled={generateDisabled}
-              title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Open presentation preview"}
-            >
-              {isGenerating ? "Generating…" : "Generate PPT"}
-            </button>
-
-            <button
-              className="btn btnGhost"
-              type="button"
-              onClick={onDirectExport}
-              disabled={generateDisabled}
-              aria-disabled={generateDisabled}
-              title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Directly generate and download without preview"}
-            >
-              Direct download
-            </button>
-          </div>
+      {/* Minimal header: dropdown only (per requirements). */}
+      <header className="appHeader appHeaderMinimal">
+        <div className="container headerInner headerInnerMinimal">
+          <label className="topSlideSelectLabel" htmlFor="topSlideSelect">
+            Slide
+          </label>
+          <select
+            id="topSlideSelect"
+            className="select topSlideSelect"
+            value={dropdownValue}
+            onChange={handleDropdownChange}
+            aria-label="Select slide"
+          >
+            {slideDropdownOptions.map((opt) => (
+              <option key={opt.value} value={opt.value} disabled={Boolean(opt.disabled)}>
+                {opt.kind === "separator" ? "──────────" : opt.label}
+              </option>
+            ))}
+          </select>
         </div>
       </header>
 
       <main className="appMain">
         <div className="container">
-          <div className="gridV2">
-            <SlideList
-              globalCover={{ id: GLOBAL_COVER_ID, data: globalCoverSlide }}
-              globalLast={{ id: GLOBAL_LAST_ID, data: globalLastSlide }}
-              skillFactories={factories}
-              slides={slides}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onAdd={addSlide}
-              onAddSkillFactory={addSkillFactory}
-              onDelete={deleteSlide}
-              onDeleteSkillFactory={deleteSkillFactory}
-              onMoveUp={(idx) => moveSlide(idx, idx - 1)}
-              onMoveDown={(idx) => moveSlide(idx, idx + 1)}
-            />
-
+          <div className="gridMainSolo">
             <section className="rightPane" aria-label="Preview and editor" ref={rightPaneRef}>
-              <div className="editorBreadcrumbRow">
-                <Breadcrumbs items={breadcrumbItems} ariaLabel="Editor breadcrumb" />
-              </div>
-
               <div className="splitWrap" ref={splitWrapRef} style={{ ["--splitPct"]: `${splitPct}%` }}>
                 <div className="splitPane splitPaneLeft" aria-label="Preview pane">
                   <SlidePreview {...previewProps} />
@@ -635,6 +674,119 @@ function App() {
                     onSkillFactorySlide4Change={(patch) => selectedFactoryId && updateSkillFactorySlide4(selectedFactoryId, patch)}
                   />
 
+                  {/* Existing actions kept reachable (not in header). */}
+                  <section className="card" aria-label="Actions">
+                    <div className="cardHeader">
+                      <h2 className="cardTitle">Actions</h2>
+                      <p className="cardHint">Export, add slides, and manage groups.</p>
+                    </div>
+                    <div className="cardBody" style={{ display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button
+                          className="btn btnSecondary"
+                          type="button"
+                          onClick={addSlide}
+                          disabled={isGenerating}
+                          aria-disabled={isGenerating}
+                        >
+                          + Add slide
+                        </button>
+
+                        <button
+                          className="btn btnGhost"
+                          type="button"
+                          onClick={addSkillFactory}
+                          disabled={isGenerating}
+                          aria-disabled={isGenerating}
+                          title="Add Skill Factory group"
+                        >
+                          + Skill Factory
+                        </button>
+
+                        <button
+                          className="btn"
+                          type="button"
+                          onClick={onGenerate}
+                          disabled={generateDisabled}
+                          aria-disabled={generateDisabled}
+                          title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Open presentation preview"}
+                        >
+                          {isGenerating ? "Generating…" : "Generate PPT"}
+                        </button>
+
+                        <button
+                          className="btn btnGhost"
+                          type="button"
+                          onClick={onDirectExport}
+                          disabled={generateDisabled}
+                          aria-disabled={generateDisabled}
+                          title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Directly generate and download without preview"}
+                        >
+                          Direct download
+                        </button>
+                      </div>
+
+                      <div className={`helper ${canGenerate ? "" : "helperError"}`} role="status" aria-live="polite">
+                        {helperText}
+                      </div>
+
+                      {/* Minimal management helpers: keep behavior unchanged, but without the left hierarchy UI. */}
+                      {isSkillFactorySlide1Selected || isSkillFactorySlide2Selected || isSkillFactorySlide3Selected || isSkillFactorySlide4Selected ? (
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                          <div className="badge">Skill Factory</div>
+                          <button
+                            type="button"
+                            className="btn btnSmall btnDanger"
+                            onClick={() => selectedFactoryId && deleteSkillFactory(selectedFactoryId)}
+                            disabled={!selectedFactoryId}
+                            aria-disabled={!selectedFactoryId}
+                            title="Delete current Skill Factory group"
+                          >
+                            Delete group
+                          </button>
+                        </div>
+                      ) : null}
+
+                      {!isCoverSelected && !isLastSelected && !isSkillFactorySlide1Selected && !isSkillFactorySlide2Selected && !isSkillFactorySlide3Selected && !isSkillFactorySlide4Selected ? (
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                          <div className="badge">Normal slide</div>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <button
+                              type="button"
+                              className="btn btnSmall btnGhost"
+                              onClick={() => selectedIndex >= 0 && moveSlide(selectedIndex, selectedIndex - 1)}
+                              disabled={selectedIndex <= 0}
+                              aria-disabled={selectedIndex <= 0}
+                              title={selectedIndex <= 0 ? "Already at top" : "Move up"}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btnSmall btnGhost"
+                              onClick={() => selectedIndex >= 0 && moveSlide(selectedIndex, selectedIndex + 1)}
+                              disabled={selectedIndex < 0 || selectedIndex >= slides.length - 1}
+                              aria-disabled={selectedIndex < 0 || selectedIndex >= slides.length - 1}
+                              title={selectedIndex >= slides.length - 1 ? "Already at bottom" : "Move down"}
+                            >
+                              ↓
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btnSmall btnDanger"
+                              onClick={() => selectedId && deleteSlide(selectedId)}
+                              disabled={!selectedSlide}
+                              aria-disabled={!selectedSlide}
+                              title="Delete slide"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </section>
+
                   <section className="card" aria-label="How to use">
                     <div className="cardHeader">
                       <h2 className="cardTitle">How to use</h2>
@@ -643,19 +795,10 @@ function App() {
                     <div className="cardBody">
                       <ol style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8, color: "#111827", fontSize: 13, lineHeight: 1.5 }}>
                         <li>
-                          Edit the fixed <strong>Global Cover</strong> (slide 1) for title, subtitle, tagline and background.
+                          Use the <strong>Slide</strong> dropdown to switch between Global Cover, Skill Factory slides, normal slides, and Global Last Page.
                         </li>
                         <li>
-                          Edit the fixed <strong>Global Last Page</strong> (always the final slide) for a closing message and optional branding.
-                        </li>
-                        <li>
-                          Add slides with <strong>+ Add</strong>.
-                        </li>
-                        <li>
-                          Fill in a <strong>title</strong> (required), subtitle, bullets, and optional image.
-                        </li>
-                        <li>
-                          Confirm layout in <strong>Preview</strong> (fit-to-width by default).
+                          Confirm layout in <strong>Preview</strong> (fit-to-width by default). Use −, 100%, + (and Fit) for detail.
                         </li>
                         <li>
                           Click <strong>Generate PPT</strong> to preview the full deck and download.
@@ -664,12 +807,6 @@ function App() {
                           </div>
                         </li>
                       </ol>
-
-                      <div className="divider" />
-
-                      <div className={`helper ${canGenerate ? "" : "helperError"}`} role="status" aria-live="polite">
-                        {helperText}
-                      </div>
                     </div>
                   </section>
                 </div>
