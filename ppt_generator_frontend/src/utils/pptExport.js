@@ -713,9 +713,12 @@ async function addSkillFactorySlide3(pptx, factory) {
   });
 
   const columns = Array.isArray(sf3.columns) ? sf3.columns : [];
-  const cols = columns.length || 6;
+  const cols = columns.length;
 
-  // Column widths roughly match screenshot: narrow fields + wide Talent Pipeline
+  // Defensive: if no headers, skip rendering the table grid (still show title + band).
+  if (!cols) return;
+
+  // Column widths roughly match screenshot for 6 columns; otherwise uniform.
   const colWeights = cols === 6 ? [1.05, 1.15, 1.6, 3.6, 1.05, 1.25] : new Array(cols).fill(1);
   const weightSum = colWeights.reduce((a, b) => a + b, 0);
   const colWs = colWeights.map((w) => (w0 * w) / weightSum);
@@ -770,7 +773,7 @@ async function addSkillFactorySlide3(pptx, factory) {
 
   // Body rows
   for (let r = 0; r < maxRows; r++) {
-    const row = slice[r] || null;
+    const row = Array.isArray(slice[r]) ? slice[r] : [];
     const y = headerY + headerH + r * rowH;
 
     // alternating fill
@@ -794,18 +797,8 @@ async function addSkillFactorySlide3(pptx, factory) {
       line: { color: "E5E7EB", width: 0.6 }
     });
 
-    // Cells (mapped to known fields for the standard 6-col layout)
-    const values =
-      cols === 6
-        ? [
-            (row?.domain || "").toString(),
-            (row?.subDomain || "").toString(),
-            (row?.capability || "").toString(),
-            (row?.talentPipeline || "").toString(),
-            (row?.status || "").toString(),
-            (row?.totalResourceCount || "").toString()
-          ]
-        : new Array(cols).fill("").map(() => "");
+    // Cells (dynamic). Pad/trim to current header length.
+    const values = new Array(cols).fill("").map((_, i) => (row[i] ?? "").toString());
 
     cx = x0;
     for (let c = 0; c < cols; c++) {
@@ -815,7 +808,7 @@ async function addSkillFactorySlide3(pptx, factory) {
         y: y + 0.10,
         w: Math.max(0, colWs[c] - padX * 2),
         h: rowH - 0.12,
-        fontSize: c === 3 ? 9 : 10,
+        fontSize: cols === 6 && c === 3 ? 9 : 10,
         color: "111827",
         valign: "top"
       });

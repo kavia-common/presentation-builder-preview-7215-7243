@@ -359,56 +359,68 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
                 <div className="sf3TitleText">{sf3?.title?.trim() ? sf3.title : "Continuous Assessment"}</div>
               </div>
 
-              <div className="sf3TableWrap">
-                <div className="sf3TableCard">
-                  <div className="sf3TableHeaderBand" aria-hidden="true" />
-                  <div className="sf3TableInner" role="table" aria-label="Continuous assessment table">
-                    <div className="sf3TableHead" role="rowgroup">
-                      <div className="sf3Row sf3RowHead" role="row">
-                        {(Array.isArray(sf3?.columns) ? sf3.columns : []).map((c, idx) => (
-                          <div key={idx} className="sf3Cell sf3CellHead" role="columnheader">
-                            {(c || "").trim() || `Column ${idx + 1}`}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="sf3TableBody" role="rowgroup">
-                      {(Array.isArray(sf3?.rows) ? sf3.rows : []).length ? (
-                        (sf3.rows || []).slice(0, 6).map((r, idx) => (
-                          <div key={idx} className="sf3Row" role="row">
-                            <div className="sf3Cell" role="cell">
-                              {r?.domain?.trim?.() ? r.domain : "—"}
+              {Array.isArray(sf3?.columns) && sf3.columns.length ? (
+                <div className="sf3TableWrap">
+                  <div className="sf3TableCard">
+                    <div className="sf3TableHeaderBand" aria-hidden="true" />
+                    <div className="sf3TableInner" role="table" aria-label="Continuous assessment table">
+                      <div className="sf3TableHead" role="rowgroup">
+                        <div
+                          className="sf3Row sf3RowHead"
+                          role="row"
+                          style={{
+                            gridTemplateColumns: `repeat(${sf3.columns.length}, minmax(0, 1fr))`
+                          }}
+                        >
+                          {(sf3.columns || []).map((c, idx) => (
+                            <div key={idx} className="sf3Cell sf3CellHead" role="columnheader">
+                              {(c || "").trim() || `Column ${idx + 1}`}
                             </div>
-                            <div className="sf3Cell" role="cell">
-                              {r?.subDomain?.trim?.() ? r.subDomain : "—"}
-                            </div>
-                            <div className="sf3Cell" role="cell">
-                              {r?.capability?.trim?.() ? r.capability : "—"}
-                            </div>
-                            <div className="sf3Cell sf3CellWrap" role="cell">
-                              {r?.talentPipeline?.trim?.() ? r.talentPipeline : "—"}
-                            </div>
-                            <div className="sf3Cell" role="cell">
-                              {r?.status?.trim?.() ? r.status : "—"}
-                            </div>
-                            <div className="sf3Cell" role="cell">
-                              {r?.totalResourceCount?.trim?.() ? r.totalResourceCount : "—"}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="sf3Empty">
-                          <div className="badge">Table</div>
-                          <div style={{ marginTop: 8, fontSize: 12, color: "rgba(17,24,39,0.65)", lineHeight: 1.4 }}>
-                            Add rows in the editor to populate Slide 3.
-                          </div>
+                          ))}
                         </div>
-                      )}
+                      </div>
+
+                      <div className="sf3TableBody" role="rowgroup">
+                        {(Array.isArray(sf3?.rows) ? sf3.rows : []).length ? (
+                          (sf3.rows || []).slice(0, 6).map((r, idx) => {
+                            const row = Array.isArray(r) ? r : [];
+                            return (
+                              <div
+                                key={idx}
+                                className="sf3Row"
+                                role="row"
+                                style={{
+                                  gridTemplateColumns: `repeat(${sf3.columns.length}, minmax(0, 1fr))`
+                                }}
+                              >
+                                {sf3.columns.map((_c, colIdx) => (
+                                  <div key={colIdx} className="sf3Cell" role="cell">
+                                    {(row[colIdx] || "").toString().trim() || "—"}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="sf3Empty">
+                            <div className="badge">Table</div>
+                            <div style={{ marginTop: 8, fontSize: 12, color: "rgba(17,24,39,0.65)", lineHeight: 1.4 }}>
+                              Add rows in the editor to populate Slide 3.
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="coverUploadEmpty" style={{ margin: "0 16px", flex: 1 }}>
+                  <div className="badge">Table</div>
+                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
+                    Add at least one column header in the editor to start building the table.
+                  </div>
+                </div>
+              )}
 
               <div
                 className="sf3BottomBand"

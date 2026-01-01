@@ -1085,27 +1085,40 @@ export default function SlideForm({
     const cols = Array.isArray(slide3.columns) ? slide3.columns : [];
     const rows = Array.isArray(slide3.rows) ? slide3.rows : [];
 
-    const ensureCols = () => (cols.length ? cols : ["Domain", "Sub domain", "Capability", "Talent Pipeline", "Status", "Total Resource Count"]);
+    // Keep existing behavior where an empty columns list shows a sensible default.
+    // HOWEVER: we also support a true "no headers" empty state by allowing the user to delete down to 0.
+    // If the stored list is empty, we treat it as empty (no Add Row) until user adds at least 1 column.
+    const hasAnyHeader = cols.length > 0;
+    const displayCols = cols;
 
-    const addColumn = () => update({ columns: [...ensureCols(), "New column"] });
+    const addColumn = () => {
+      const nextCols = [...displayCols, "New column"];
+      // Reset existing rows to the new header count (empty cells), keeping row count.
+      update({ columns: nextCols, rows: rows.map(() => new Array(nextCols.length).fill("").map(() => "")) });
+    };
 
     const removeColumn = (idx) => {
-      const next = [...ensureCols()];
-      if (next.length <= 1) return;
-      next.splice(idx, 1);
-      update({ columns: next });
+      const nextCols = [...displayCols];
+      nextCols.splice(idx, 1);
+
+      // Reset all rows to match new headers (as requested).
+      const nextRows = rows.map(() => new Array(nextCols.length).fill("").map(() => ""));
+      update({ columns: nextCols, rows: nextRows });
     };
 
     const updateColumn = (idx, val) => {
-      const next = [...ensureCols()];
-      next[idx] = val;
-      update({ columns: next });
+      const nextCols = [...displayCols];
+      nextCols[idx] = val;
+
+      // Any header change should reset ALL existing row data to empty cells.
+      const nextRows = rows.map(() => new Array(nextCols.length).fill("").map(() => ""));
+      update({ columns: nextCols, rows: nextRows });
     };
 
-    const addRow = () =>
-      update({
-        rows: [...rows, { domain: "", subDomain: "", capability: "", talentPipeline: "", status: "", totalResourceCount: "" }]
-      });
+    const addRow = () => {
+      if (!hasAnyHeader) return;
+      update({ rows: [...rows, new Array(displayCols.length).fill("").map(() => "")] });
+    };
 
     const removeRow = (idx) => {
       const next = [...rows];
@@ -1113,9 +1126,18 @@ export default function SlideForm({
       update({ rows: next });
     };
 
-    const updateRow = (idx, patch) => {
-      const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
-      update({ rows: next });
+    const updateCell = (rowIdx, colIdx, value) => {
+      const colCount = displayCols.length;
+      const nextRows = rows.map((r, i) => {
+        if (i !== rowIdx) return Array.isArray(r) ? r : new Array(colCount).fill("").map(() => "");
+        const base = Array.isArray(r) ? [...r] : new Array(colCount).fill("").map(() => "");
+        // pad/trim defensively
+        if (base.length < colCount) base.push(...new Array(colCount - base.length).fill("").map(() => ""));
+        if (base.length > colCount) base.splice(colCount);
+        base[colIdx] = value;
+        return base;
+      });
+      update({ rows: nextRows });
     };
 
     return (
@@ -1159,14 +1181,17 @@ export default function SlideForm({
               </div>
             </Section>
 
-            <Section
-              title="Columns"
-              hint="Keep these short; they map to the table header."
-              defaultOpen={false}
-              actions={<span className="kbdHint">Edit below</span>}
-            >
-              <div className="formList">
-                {ensureCols().map((c, idx) => (
+            <Section title="Columns" hint="Add headers first. Changing headers resets all rows." defaultOpen actions={<span className="kbdHint">Edit below</span>}>
+              {!hasAnyHeader ? (
+                <EmptyState
+                  badge="Required"
+                  title="No table headers"
+                  description="Add at least one column header to start adding rows. When you change headers, existing rows reset to empty cells."
+                />
+              ) : null}
+
+              <div className="formList" style={{ marginTop: hasAnyHeader ? 0 : 10 }}>
+                {(displayCols || []).map((c, idx) => (
                   <div key={`${sf3ColSeedId}_${idx}`} className="formListRow">
                     <input
                       className="input"
@@ -1179,7 +1204,6 @@ export default function SlideForm({
                       type="button"
                       className="btn btnSmall btnGhost formRowAction"
                       onClick={() => removeColumn(idx)}
-                      disabled={ensureCols().length <= 1}
                       aria-label={`Remove column ${idx + 1}`}
                       title="Remove"
                     >
@@ -1187,114 +1211,81 @@ export default function SlideForm({
                     </button>
                   </div>
                 ))}
+
                 <button type="button" className="btn btnSmall btnGhost" onClick={addColumn}>
                   + Add column
                 </button>
               </div>
-              <div className="helper">Export uses the same order. Standard layout expects 6 columns like the reference.</div>
+
+              <div className="helper">
+                Export and previews always use the current header order. Changing headers clears existing row values to keep the table consistent.
+              </div>
             </Section>
 
-            <Section title="Rows" hint="Add 1–4 rows for best density. Long text wraps in Talent Pipeline." defaultOpen actions={<span className="kbdHint">Edit below</span>}>
-              {!rows.length ? <EmptyState badge="Optional" title="No rows" description="Add at least one row to populate the table." /> : null}
+            <Section title="Rows" hint="Add 1–6 rows. Cells are editable inline." defaultOpen actions={<span className="kbdHint">Edit below</span>}>
+              {!hasAnyHeader ? (
+                <EmptyState badge="Required" title="Headers needed" description="Add at least one column header to enable rows." />
+              ) : !rows.length ? (
+                <EmptyState badge="Optional" title="No rows" description="Add a row to populate the table." />
+              ) : null}
 
-              {rows.length ? (
+              {hasAnyHeader && rows.length ? (
                 <div style={{ overflowX: "auto" }}>
-                  <table className="sf3EditorTable" aria-label="Slide 3 table rows">
+                  <table className="sf3EditorTable" aria-label="Slide 3 dynamic table editor">
                     <thead>
                       <tr>
-                        <th style={{ minWidth: 120 }}>Domain</th>
-                        <th style={{ minWidth: 140 }}>Sub domain</th>
-                        <th style={{ minWidth: 180 }}>Capability</th>
-                        <th style={{ minWidth: 360 }}>Talent Pipeline</th>
-                        <th style={{ minWidth: 120 }}>Status</th>
-                        <th style={{ minWidth: 170 }}>Total Resource Count</th>
+                        {displayCols.map((c, idx) => (
+                          <th key={idx} style={{ minWidth: 160 }}>
+                            {(c || "").trim() || `Column ${idx + 1}`}
+                          </th>
+                        ))}
                         <th aria-label="Actions" />
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((r, idx) => (
-                        <tr key={`${sf3RowSeedId}_${idx}`} className="sfRow">
-                          <td>
-                            <input
-                              className="input"
-                              value={r?.domain || ""}
-                              onChange={(e) => updateRow(idx, { domain: e.target.value })}
-                              placeholder="e.g., RMG"
-                              aria-label={`Row ${idx + 1} domain`}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              className="input"
-                              value={r?.subDomain || ""}
-                              onChange={(e) => updateRow(idx, { subDomain: e.target.value })}
-                              placeholder="e.g., RMG"
-                              aria-label={`Row ${idx + 1} sub domain`}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              className="input"
-                              value={r?.capability || ""}
-                              onChange={(e) => updateRow(idx, { capability: e.target.value })}
-                              placeholder="e.g., Skills / Competency"
-                              aria-label={`Row ${idx + 1} capability`}
-                            />
-                          </td>
-                          <td>
-                            <textarea
-                              className="textarea"
-                              value={r?.talentPipeline || ""}
-                              onChange={(e) => updateRow(idx, { talentPipeline: e.target.value })}
-                              placeholder="Describe pipeline / assessment notes…"
-                              aria-label={`Row ${idx + 1} talent pipeline`}
-                              style={{ minHeight: 70 }}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              className="input"
-                              value={r?.status || ""}
-                              onChange={(e) => updateRow(idx, { status: e.target.value })}
-                              placeholder="e.g., Active"
-                              aria-label={`Row ${idx + 1} status`}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              className="input"
-                              value={r?.totalResourceCount || ""}
-                              onChange={(e) => updateRow(idx, { totalResourceCount: e.target.value })}
-                              placeholder="e.g., 15"
-                              aria-label={`Row ${idx + 1} total resource count`}
-                            />
-                          </td>
-                          <td style={{ textAlign: "right" }}>
-                            <button
-                              type="button"
-                              className="btn btnSmall btnGhost sfRowAction"
-                              onClick={() => removeRow(idx)}
-                              aria-label={`Remove row ${idx + 1}`}
-                              title="Remove row"
-                            >
-                              −
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {rows.map((r, rowIdx) => {
+                        const safeRow = Array.isArray(r) ? r : new Array(displayCols.length).fill("").map(() => "");
+                        return (
+                          <tr key={`${sf3RowSeedId}_${rowIdx}`} className="sfRow">
+                            {displayCols.map((_c, colIdx) => (
+                              <td key={colIdx}>
+                                <input
+                                  className="input"
+                                  value={(safeRow[colIdx] || "").toString()}
+                                  onChange={(e) => updateCell(rowIdx, colIdx, e.target.value)}
+                                  placeholder="—"
+                                  aria-label={`Row ${rowIdx + 1} column ${colIdx + 1}`}
+                                />
+                              </td>
+                            ))}
+
+                            <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                              <button
+                                type="button"
+                                className="btn btnSmall btnGhost sfRowAction"
+                                onClick={() => removeRow(rowIdx)}
+                                aria-label={`Remove row ${rowIdx + 1}`}
+                                title="Remove row"
+                              >
+                                −
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
 
                   <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button type="button" className="btn btnSmall btnGhost" onClick={addRow}>
+                    <button type="button" className="btn btnSmall btnGhost" onClick={addRow} disabled={!hasAnyHeader} aria-disabled={!hasAnyHeader}>
                       + Add row
                     </button>
                   </div>
 
-                  <div className="helper">Export will render the table with wrapping and a bottom band like the reference.</div>
+                  <div className="helper">Previews update live. Export mirrors the same headers/rows.</div>
                 </div>
               ) : (
-                <button type="button" className="btn btnSmall btnGhost" onClick={addRow}>
+                <button type="button" className="btn btnSmall btnGhost" onClick={addRow} disabled={!hasAnyHeader} aria-disabled={!hasAnyHeader}>
                   + Add row
                 </button>
               )}

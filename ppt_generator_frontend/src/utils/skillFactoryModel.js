@@ -31,29 +31,29 @@ export const DEFAULT_SKILL_FACTORY = {
     /**
      * Slide 3: tabular "Continuous Assessment - RMG" style slide.
      * Based on reference: a title line, a wide table, and a bottom blue band.
+     *
+     * IMPORTANT: rows are stored as string[][] (array-of-cells), so columns can be fully dynamic.
      */
     slide3: {
       title: "Data Engineering : Continuous Assessment - RMG",
       columns: ["Domain", "Sub domain", "Capability", "Talent Pipeline", "Status", "Total Resource Count"],
       rows: [
-        {
-          domain: "RMG",
-          subDomain: "RMG",
-          capability: "Skills / Competency",
-          talentPipeline:
-            "Talent pipeline is mapped against the capability and current sprint planned to have new candidates screened.",
-          status: "Active",
-          totalResourceCount: "15"
-        },
-        {
-          domain: "RMG",
-          subDomain: "RMG",
-          capability: "Learning / Training",
-          talentPipeline:
-            "Training pipeline is planned for new joiners; skills uplift mapped to sprint cadence and role expectations.",
-          status: "Active",
-          totalResourceCount: "15"
-        }
+        [
+          "RMG",
+          "RMG",
+          "Skills / Competency",
+          "Talent pipeline is mapped against the capability and current sprint planned to have new candidates screened.",
+          "Active",
+          "15"
+        ],
+        [
+          "RMG",
+          "RMG",
+          "Learning / Training",
+          "Training pipeline is planned for new joiners; skills uplift mapped to sprint cadence and role expectations.",
+          "Active",
+          "15"
+        ]
       ],
       // Visuals
       bottomBandColor: "#2F78A8"
@@ -84,7 +84,7 @@ export function createDefaultSkillFactory() {
       slide3: {
         title: DEFAULT_SKILL_FACTORY.slides.slide3.title,
         columns: [...DEFAULT_SKILL_FACTORY.slides.slide3.columns],
-        rows: DEFAULT_SKILL_FACTORY.slides.slide3.rows.map((r) => ({ ...r })),
+        rows: DEFAULT_SKILL_FACTORY.slides.slide3.rows.map((r) => (Array.isArray(r) ? [...r] : [])),
         bottomBandColor: DEFAULT_SKILL_FACTORY.slides.slide3.bottomBandColor
       }
     }
@@ -152,14 +152,20 @@ export function loadSkillFactoriesFromStorage() {
               ? f.slides.slide3.columns.map((c) => (c || "").toString())
               : base.slides.slide3.columns,
             rows: Array.isArray(f?.slides?.slide3?.rows)
-              ? f.slides.slide3.rows.map((r) => ({
-                  domain: (r?.domain || "").toString(),
-                  subDomain: (r?.subDomain || "").toString(),
-                  capability: (r?.capability || "").toString(),
-                  talentPipeline: (r?.talentPipeline || "").toString(),
-                  status: (r?.status || "").toString(),
-                  totalResourceCount: (r?.totalResourceCount || "").toString()
-                }))
+              ? f.slides.slide3.rows.map((r) => {
+                  // New format: array-of-cells
+                  if (Array.isArray(r)) return r.map((c) => (c || "").toString());
+
+                  // Legacy object format: map to standard 6 columns
+                  return [
+                    (r?.domain || "").toString(),
+                    (r?.subDomain || "").toString(),
+                    (r?.capability || "").toString(),
+                    (r?.talentPipeline || "").toString(),
+                    (r?.status || "").toString(),
+                    (r?.totalResourceCount || "").toString()
+                  ];
+                })
               : base.slides.slide3.rows
           }
         }
