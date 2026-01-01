@@ -1,4 +1,4 @@
-import React, { useId, useMemo, useRef } from "react";
+import React, { useId, useMemo, useRef, useState } from "react";
 import { THEME_PRESETS } from "../utils/slideModel";
 import MasonryDnD from "./MasonryDnD";
 
@@ -32,6 +32,49 @@ function ColorSwatch({ color, selected, onClick, label }) {
   );
 }
 
+function Section({ title, hint, defaultOpen = true, actions, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="formSection">
+      <button
+        type="button"
+        className="formSectionHeader"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <div className="formSectionHeaderLeft" style={{ minWidth: 0 }}>
+          <div className="formSectionTitleRow">
+            <div className="formSectionTitle">{title}</div>
+            <span className="formSectionChevron" aria-hidden="true">
+              {open ? "▾" : "▸"}
+            </span>
+          </div>
+          {hint ? <div className="formSectionHint">{hint}</div> : null}
+        </div>
+
+        {actions ? (
+          <div className="formSectionHeaderActions" onClick={(e) => e.stopPropagation()}>
+            {actions}
+          </div>
+        ) : null}
+      </button>
+
+      {open ? <div className="formSectionBody">{children}</div> : null}
+    </section>
+  );
+}
+
+function EmptyState({ badge = "Optional", title, description }) {
+  return (
+    <div className="formEmptyState">
+      <div className="badge">{badge}</div>
+      {title ? <div className="formEmptyTitle">{title}</div> : null}
+      {description ? <div className="formEmptyDesc">{description}</div> : null}
+    </div>
+  );
+}
+
 // PUBLIC_INTERFACE
 export default function SlideForm({
   mode = "slide",
@@ -46,6 +89,7 @@ export default function SlideForm({
   onSkillFactorySlide2Change
 }) {
   /** Form used to edit the currently selected slide OR pinned Global Cover OR pinned Global Last Page OR Skill Factory Slide 1/2. */
+
   const titleId = useId();
   const subtitleId = useId();
   const taglineId = useId();
@@ -137,121 +181,130 @@ export default function SlideForm({
       <section className="card" aria-label="Cover editor">
         <div className="cardHeader">
           <h2 className="cardTitle">Global Cover</h2>
-          <p className="cardHint">This is slide 1 and cannot be deleted or reordered.</p>
+          <p className="cardHint">Slide 1. Fixed position (can’t be deleted or reordered).</p>
         </div>
 
         <div className="cardBody">
-          <div className="row">
-            <div>
-              <label className="label" htmlFor={titleId}>
-                Cover title
-              </label>
-              <input
-                id={titleId}
-                className="input"
-                value={cover.title}
-                onChange={(e) => updateCover({ title: e.target.value })}
-                placeholder="e.g., TATA ELXSI"
-              />
-              <div className="helper">Bold headline shown on the cover.</div>
-            </div>
+          <div className="formStack">
+            <Section title="Text" hint="Headline + supporting text shown on the cover." defaultOpen>
+              <div className="row">
+                <div>
+                  <label className="label" htmlFor={titleId}>
+                    Cover title
+                  </label>
+                  <input
+                    id={titleId}
+                    className="input"
+                    value={cover.title}
+                    onChange={(e) => updateCover({ title: e.target.value })}
+                    placeholder="e.g., TATA ELXSI"
+                  />
+                  <div className="helper">Bold headline shown on the cover.</div>
+                </div>
 
-            <div>
-              <label className="label" htmlFor={subtitleId}>
-                Subtitle
-              </label>
-              <input
-                id={subtitleId}
-                className="input"
-                value={cover.subtitle}
-                onChange={(e) => updateCover({ subtitle: e.target.value })}
-                placeholder="e.g., Name : Subrata B"
-              />
-            </div>
+                <div>
+                  <label className="label" htmlFor={subtitleId}>
+                    Subtitle
+                  </label>
+                  <input
+                    id={subtitleId}
+                    className="input"
+                    value={cover.subtitle}
+                    onChange={(e) => updateCover({ subtitle: e.target.value })}
+                    placeholder="e.g., Name : Subrata B"
+                  />
+                </div>
 
-            <div>
-              <label className="label" htmlFor={taglineId}>
-                Tagline / supporting text
-              </label>
-              <textarea
-                id={taglineId}
-                className="textarea"
-                value={cover.tagline}
-                onChange={(e) => updateCover({ tagline: e.target.value })}
-                placeholder={"e.g., Date : 2 Dec 2023\nDigital KRG Weekly Metrics"}
-              />
-              <div className="helper">Supports multiple lines (use line breaks).</div>
-            </div>
-
-            <div className="divider" />
-
-            <div className="row2">
-              <div>
-                <div className="label">Primary color</div>
-                <input
-                  className="input"
-                  type="color"
-                  value={cover.primaryColor || "#2563EB"}
-                  onChange={(e) => updateCover({ primaryColor: e.target.value })}
-                  aria-label="Primary color"
-                  style={{ padding: 6, height: 42 }}
-                />
-                <div className="helper">Used for the Ocean Professional overlay.</div>
+                <div>
+                  <label className="label" htmlFor={taglineId}>
+                    Supporting text (multi-line)
+                  </label>
+                  <textarea
+                    id={taglineId}
+                    className="textarea"
+                    value={cover.tagline}
+                    onChange={(e) => updateCover({ tagline: e.target.value })}
+                    placeholder={"e.g., Date : 2 Dec 2023\nDigital KRG Weekly Metrics"}
+                  />
+                  <div className="helper">Use line breaks for stacked lines.</div>
+                </div>
               </div>
+            </Section>
 
-              <div>
-                <div className="label">Secondary color</div>
-                <input
-                  className="input"
-                  type="color"
-                  value={cover.secondaryColor || "#F59E0B"}
-                  onChange={(e) => updateCover({ secondaryColor: e.target.value })}
-                  aria-label="Secondary color"
-                  style={{ padding: 6, height: 42 }}
-                />
-                <div className="helper">Accent used in the overlay blend.</div>
+            <Section title="Colors" hint="Primary/secondary overlay colors." defaultOpen={false}>
+              <div className="row2">
+                <div>
+                  <div className="label">Primary color</div>
+                  <input
+                    className="input"
+                    type="color"
+                    value={cover.primaryColor || "#2563EB"}
+                    onChange={(e) => updateCover({ primaryColor: e.target.value })}
+                    aria-label="Primary color"
+                    style={{ padding: 6, height: 42 }}
+                  />
+                  <div className="helper">Used for the Ocean Professional overlay.</div>
+                </div>
+
+                <div>
+                  <div className="label">Secondary color</div>
+                  <input
+                    className="input"
+                    type="color"
+                    value={cover.secondaryColor || "#F59E0B"}
+                    onChange={(e) => updateCover({ secondaryColor: e.target.value })}
+                    aria-label="Secondary color"
+                    style={{ padding: 6, height: 42 }}
+                  />
+                  <div className="helper">Accent used in the overlay blend.</div>
+                </div>
               </div>
-            </div>
+            </Section>
 
-            <div className="divider" />
-
-            <div>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                <span className="label">Cover background image</span>
-                {cover.backgroundImage?.objectUrl ? (
+            <Section
+              title="Background image"
+              hint="Local-only: used for preview and PPT export."
+              defaultOpen={false}
+              actions={
+                cover.backgroundImage?.objectUrl ? (
                   <button type="button" className="btn btnSmall btnGhost" onClick={clearCoverImage}>
                     Remove
                   </button>
-                ) : null}
-              </div>
-
-              <input
-                ref={fileInputRef}
-                className="input"
-                type="file"
-                accept="image/*"
-                onChange={(e) => onPickCoverImage(e.target.files?.[0])}
-                aria-label="Upload background image for cover (local only)"
-              />
-              <div className="helper">Local-only: used for preview and PPT export.</div>
-
-              {cover.backgroundImage?.objectUrl ? (
-                <div className="coverUploadPreview">
-                  <img
-                    src={cover.backgroundImage.objectUrl}
-                    alt={cover.backgroundImage.fileName ? `Cover background: ${cover.backgroundImage.fileName}` : "Cover background"}
-                    className="coverUploadPreviewImg"
+                ) : null
+              }
+            >
+              <div className="row">
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    className="input"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => onPickCoverImage(e.target.files?.[0])}
+                    aria-label="Upload background image for cover (local only)"
                   />
+                  <div className="helper">Your file never leaves your browser.</div>
+
+                  {cover.backgroundImage?.objectUrl ? (
+                    <div className="coverUploadPreview">
+                      <img
+                        src={cover.backgroundImage.objectUrl}
+                        alt={
+                          cover.backgroundImage.fileName ? `Cover background: ${cover.backgroundImage.fileName}` : "Cover background"
+                        }
+                        className="coverUploadPreviewImg"
+                      />
+                    </div>
+                  ) : (
+                    <EmptyState
+                      badge="Optional"
+                      title="No background image"
+                      description="Add a background photo if you want a hero-style cover."
+                    />
+                  )}
                 </div>
-              ) : (
-                <div className="coverUploadEmpty">
-                  <div className="badge">Optional</div>
-                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
-                    Add a background photo to match the screenshot’s hero image.
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            </Section>
           </div>
         </div>
       </section>
@@ -330,184 +383,186 @@ export default function SlideForm({
       <section className="card" aria-label="Global last page editor">
         <div className="cardHeader">
           <h2 className="cardTitle">Global Last Page</h2>
-          <p className="cardHint">This slide is always last and cannot be deleted or reordered.</p>
+          <p className="cardHint">Final slide. Fixed position (can’t be deleted or reordered).</p>
         </div>
 
         <div className="cardBody">
-          <div className="row">
-            <div>
-              <label className="label" htmlFor={lastHeadlineId}>
-                Headline
-              </label>
-              <input
-                id={lastHeadlineId}
-                className="input"
-                value={last.headline}
-                onChange={(e) => updateLast({ headline: e.target.value })}
-                placeholder="e.g., THANK YOU"
-              />
-              <div className="helper">Large centered closing headline.</div>
-            </div>
+          <div className="formStack">
+            <Section title="Text" hint="Closing headline + supporting lines." defaultOpen>
+              <div className="row">
+                <div>
+                  <label className="label" htmlFor={lastHeadlineId}>
+                    Headline
+                  </label>
+                  <input
+                    id={lastHeadlineId}
+                    className="input"
+                    value={last.headline}
+                    onChange={(e) => updateLast({ headline: e.target.value })}
+                    placeholder="e.g., THANK YOU"
+                  />
+                  <div className="helper">Large centered closing headline.</div>
+                </div>
 
-            <div>
-              <label className="label" htmlFor={lastBrandId}>
-                Brand / tagline (line under headline)
-              </label>
-              <input
-                id={lastBrandId}
-                className="input"
-                value={last.tagline}
-                onChange={(e) => updateLast({ tagline: e.target.value })}
-                placeholder="e.g., TATA ELXSI"
-              />
-            </div>
+                <div>
+                  <label className="label" htmlFor={lastBrandId}>
+                    Brand line
+                  </label>
+                  <input
+                    id={lastBrandId}
+                    className="input"
+                    value={last.tagline}
+                    onChange={(e) => updateLast({ tagline: e.target.value })}
+                    placeholder="e.g., TATA ELXSI"
+                  />
+                </div>
 
-            <div>
-              <label className="label" htmlFor={lastSubheadId}>
-                Supporting text (multi-line)
-              </label>
-              <textarea
-                id={lastSubheadId}
-                className="textarea"
-                value={last.subhead}
-                onChange={(e) => updateLast({ subhead: e.target.value })}
-                placeholder={"e.g., FIND OUT MORE\nhttps://example.com"}
-              />
-              <div className="helper">Use line breaks for stacked text, like the reference image.</div>
-            </div>
-
-            <div className="divider" />
-
-            <div className="row2">
-              <div>
-                <div className="label">Background color</div>
-                <input
-                  className="input"
-                  type="color"
-                  value={last.backgroundColor || "#FFFFFF"}
-                  onChange={(e) => updateLast({ backgroundColor: e.target.value })}
-                  aria-label="Last page background color"
-                  style={{ padding: 6, height: 42 }}
-                />
+                <div>
+                  <label className="label" htmlFor={lastSubheadId}>
+                    Supporting text (multi-line)
+                  </label>
+                  <textarea
+                    id={lastSubheadId}
+                    className="textarea"
+                    value={last.subhead}
+                    onChange={(e) => updateLast({ subhead: e.target.value })}
+                    placeholder={"e.g., FIND OUT MORE\nhttps://example.com"}
+                  />
+                  <div className="helper">Use line breaks for stacked text.</div>
+                </div>
               </div>
+            </Section>
 
-              <div>
-                <div className="label">Accent / brand color</div>
-                <input
-                  className="input"
-                  type="color"
-                  value={last.accentColor || "#2563EB"}
-                  onChange={(e) => updateLast({ accentColor: e.target.value })}
-                  aria-label="Last page accent color"
-                  style={{ padding: 6, height: 42 }}
-                />
-                <div className="helper">Used for the brand line and accent marks.</div>
+            <Section title="Colors" hint="Background + type colors." defaultOpen={false}>
+              <div className="row2">
+                <div>
+                  <div className="label">Background color</div>
+                  <input
+                    className="input"
+                    type="color"
+                    value={last.backgroundColor || "#FFFFFF"}
+                    onChange={(e) => updateLast({ backgroundColor: e.target.value })}
+                    aria-label="Last page background color"
+                    style={{ padding: 6, height: 42 }}
+                  />
+                </div>
+
+                <div>
+                  <div className="label">Accent / brand color</div>
+                  <input
+                    className="input"
+                    type="color"
+                    value={last.accentColor || "#2563EB"}
+                    onChange={(e) => updateLast({ accentColor: e.target.value })}
+                    aria-label="Last page accent color"
+                    style={{ padding: 6, height: 42 }}
+                  />
+                  <div className="helper">Used for the brand line and accent marks.</div>
+                </div>
+
+                <div>
+                  <div className="label">Headline color</div>
+                  <input
+                    className="input"
+                    type="color"
+                    value={last.headlineColor || "#111827"}
+                    onChange={(e) => updateLast({ headlineColor: e.target.value })}
+                    aria-label="Last page headline color"
+                    style={{ padding: 6, height: 42 }}
+                  />
+                </div>
+
+                <div>
+                  <div className="label">Supporting text color</div>
+                  <input
+                    className="input"
+                    type="color"
+                    value={last.subheadColor || "#6B7280"}
+                    onChange={(e) => updateLast({ subheadColor: e.target.value })}
+                    aria-label="Last page supporting text color"
+                    style={{ padding: 6, height: 42 }}
+                  />
+                </div>
               </div>
+            </Section>
 
-              <div>
-                <div className="label">Headline color</div>
-                <input
-                  className="input"
-                  type="color"
-                  value={last.headlineColor || "#111827"}
-                  onChange={(e) => updateLast({ headlineColor: e.target.value })}
-                  aria-label="Last page headline color"
-                  style={{ padding: 6, height: 42 }}
-                />
-              </div>
-
-              <div>
-                <div className="label">Supporting text color</div>
-                <input
-                  className="input"
-                  type="color"
-                  value={last.subheadColor || "#6B7280"}
-                  onChange={(e) => updateLast({ subheadColor: e.target.value })}
-                  aria-label="Last page supporting text color"
-                  style={{ padding: 6, height: 42 }}
-                />
-              </div>
-            </div>
-
-            <div className="divider" />
-
-            <div>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                <span className="label">Optional logo</span>
-                {last.logoImage?.objectUrl ? (
+            <Section
+              title="Logo"
+              hint="Local-only: used for preview and PPT export."
+              defaultOpen={false}
+              actions={
+                last.logoImage?.objectUrl ? (
                   <button type="button" className="btn btnSmall btnGhost" onClick={clearLastLogo}>
                     Remove
                   </button>
-                ) : null}
-              </div>
-
-              <input
-                ref={lastLogoInputRef}
-                className="input"
-                type="file"
-                accept="image/*"
-                onChange={(e) => onPickLastLogo(e.target.files?.[0])}
-                aria-label="Upload logo for Global Last Page (local only)"
-              />
-              <div className="helper">Local-only: used for preview and PPT export.</div>
-
-              {last.logoImage?.objectUrl ? (
-                <div className="coverUploadPreview">
-                  <img
-                    src={last.logoImage.objectUrl}
-                    alt={last.logoImage.fileName ? `Logo: ${last.logoImage.fileName}` : "Logo"}
-                    className="coverUploadPreviewImg"
+                ) : null
+              }
+            >
+              <div className="row">
+                <div>
+                  <input
+                    ref={lastLogoInputRef}
+                    className="input"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => onPickLastLogo(e.target.files?.[0])}
+                    aria-label="Upload logo for Global Last Page (local only)"
                   />
-                </div>
-              ) : (
-                <div className="coverUploadEmpty">
-                  <div className="badge">Optional</div>
-                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
-                    Upload a logo if you want it centered below the text.
-                  </div>
-                </div>
-              )}
-            </div>
+                  <div className="helper">Your file never leaves your browser.</div>
 
-            <div className="divider" />
+                  {last.logoImage?.objectUrl ? (
+                    <div className="coverUploadPreview">
+                      <img
+                        src={last.logoImage.objectUrl}
+                        alt={last.logoImage.fileName ? `Logo: ${last.logoImage.fileName}` : "Logo"}
+                        className="coverUploadPreviewImg"
+                      />
+                    </div>
+                  ) : (
+                    <EmptyState badge="Optional" title="No logo" description="Upload a logo if you want it centered under the text." />
+                  )}
+                </div>
+              </div>
+            </Section>
 
-            <div>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                <span className="label">Optional background image</span>
-                {last.backgroundImage?.objectUrl ? (
+            <Section
+              title="Background image"
+              hint="Local-only: used for preview and PPT export."
+              defaultOpen={false}
+              actions={
+                last.backgroundImage?.objectUrl ? (
                   <button type="button" className="btn btnSmall btnGhost" onClick={clearLastBg}>
                     Remove
                   </button>
-                ) : null}
-              </div>
-
-              <input
-                ref={lastBgInputRef}
-                className="input"
-                type="file"
-                accept="image/*"
-                onChange={(e) => onPickLastBg(e.target.files?.[0])}
-                aria-label="Upload background image for Global Last Page (local only)"
-              />
-              <div className="helper">Local-only: used for preview and PPT export.</div>
-
-              {last.backgroundImage?.objectUrl ? (
-                <div className="coverUploadPreview">
-                  <img
-                    src={last.backgroundImage.objectUrl}
-                    alt={last.backgroundImage.fileName ? `Background: ${last.backgroundImage.fileName}` : "Background"}
-                    className="coverUploadPreviewImg"
+                ) : null
+              }
+            >
+              <div className="row">
+                <div>
+                  <input
+                    ref={lastBgInputRef}
+                    className="input"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => onPickLastBg(e.target.files?.[0])}
+                    aria-label="Upload background image for Global Last Page (local only)"
                   />
+                  <div className="helper">Your file never leaves your browser.</div>
+
+                  {last.backgroundImage?.objectUrl ? (
+                    <div className="coverUploadPreview">
+                      <img
+                        src={last.backgroundImage.objectUrl}
+                        alt={last.backgroundImage.fileName ? `Background: ${last.backgroundImage.fileName}` : "Background"}
+                        className="coverUploadPreviewImg"
+                      />
+                    </div>
+                  ) : (
+                    <EmptyState badge="Optional" title="No background image" description="Add a subtle background image if desired." />
+                  )}
                 </div>
-              ) : (
-                <div className="coverUploadEmpty">
-                  <div className="badge">Optional</div>
-                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
-                    Add a subtle architectural/brand image like the reference.
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            </Section>
           </div>
         </div>
       </section>
@@ -567,122 +622,110 @@ export default function SlideForm({
       update({ teamMembers: next.length ? next : [{ name: "", role: "" }] });
     };
 
+    const BulletInputs = ({ title, hint, listKey, seedId, defaultOpen = true }) => (
+      <Section
+        title={title}
+        hint={hint}
+        defaultOpen={defaultOpen}
+        actions={
+          <button type="button" className="btn btnSmall btnGhost" onClick={() => addBulletListItem(listKey)}>
+            Add
+          </button>
+        }
+      >
+        <div className="formList">
+          {ensureMinOne(slide1[listKey]).map((b, idx) => (
+            <div key={`${seedId}_${idx}`} className="formListRow">
+              <input
+                className="input"
+                value={b}
+                onChange={(e) => updateBulletListItem(listKey, idx, e.target.value)}
+                placeholder={`${title} ${idx + 1}`}
+                aria-label={`${title} ${idx + 1}`}
+              />
+              <button
+                type="button"
+                className="btn btnSmall btnGhost formRowAction"
+                onClick={() => removeBulletListItem(listKey, idx)}
+                disabled={ensureMinOne(slide1[listKey]).length <= 1}
+                aria-label={`Remove ${title.toLowerCase()} ${idx + 1}`}
+                title="Remove"
+              >
+                −
+              </button>
+            </div>
+          ))}
+          <div className="helper">Tip: leave an item empty to omit it from export.</div>
+        </div>
+      </Section>
+    );
+
     return (
       <section className="card" aria-label="Skill Factory Slide 1 editor">
         <div className="cardHeader">
           <h2 className="cardTitle">Skill Factory – Slide 1</h2>
-          <p className="cardHint">Update fields for highlights, lowlights, team, and weekly activities.</p>
+          <p className="cardHint">Highlights, lowlights, team, and weekly activities.</p>
         </div>
 
         <div className="cardBody">
-          <div className="row">
-            <div className="row2">
-              <div>
-                <label className="label" htmlFor={sfFactoryNameId}>
-                  Skill Factory name
-                </label>
-                <input
-                  id={sfFactoryNameId}
-                  className="input"
-                  value={slide1.factoryName || ""}
-                  onChange={(e) => update({ factoryName: e.target.value })}
-                  placeholder="e.g., Digital Applications: Data Engineering Skill Factory"
-                />
-              </div>
-
-              <div>
-                <label className="label" htmlFor={sfSprintLabelId}>
-                  Sprint label / date
-                </label>
-                <input
-                  id={sfSprintLabelId}
-                  className="input"
-                  value={slide1.sprintLabel || ""}
-                  onChange={(e) => update({ sprintLabel: e.target.value })}
-                  placeholder="e.g., Sprint 12 (25-Dec - 01-Jan)"
-                />
-              </div>
-            </div>
-
-            <div className="divider" />
-
-            <div className="row2">
-              <div>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                  <span className="label">Project highlights</span>
-                  <button type="button" className="btn btnSmall" onClick={() => addBulletListItem("highlights")}>
-                    + Add
-                  </button>
+          <div className="formStack">
+            <Section title="Header" hint="Factory title + sprint/date line." defaultOpen>
+              <div className="row2">
+                <div>
+                  <label className="label" htmlFor={sfFactoryNameId}>
+                    Skill Factory name
+                  </label>
+                  <input
+                    id={sfFactoryNameId}
+                    className="input"
+                    value={slide1.factoryName || ""}
+                    onChange={(e) => update({ factoryName: e.target.value })}
+                    placeholder="e.g., Digital Applications: Data Engineering Skill Factory"
+                  />
                 </div>
-                <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-                  {ensureMinOne(slide1.highlights).map((b, idx) => (
-                    <div key={`${sfHighlightsSeedId}_${idx}`} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
-                      <input
-                        className="input"
-                        value={b}
-                        onChange={(e) => updateBulletListItem("highlights", idx, e.target.value)}
-                        placeholder={`Highlight ${idx + 1}`}
-                        aria-label={`Highlight ${idx + 1}`}
-                      />
-                      <button
-                        type="button"
-                        className="btn btnSmall btnGhost"
-                        onClick={() => removeBulletListItem("highlights", idx)}
-                        disabled={ensureMinOne(slide1.highlights).length <= 1}
-                        aria-label={`Remove highlight ${idx + 1}`}
-                        title="Remove"
-                      >
-                        −
-                      </button>
-                    </div>
-                  ))}
+
+                <div>
+                  <label className="label" htmlFor={sfSprintLabelId}>
+                    Sprint label / date
+                  </label>
+                  <input
+                    id={sfSprintLabelId}
+                    className="input"
+                    value={slide1.sprintLabel || ""}
+                    onChange={(e) => update({ sprintLabel: e.target.value })}
+                    placeholder="e.g., Sprint 12 (25-Dec - 01-Jan)"
+                  />
                 </div>
               </div>
+            </Section>
 
-              <div>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                  <span className="label">Project lowlights</span>
-                  <button type="button" className="btn btnSmall" onClick={() => addBulletListItem("lowlights")}>
-                    + Add
-                  </button>
-                </div>
-                <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-                  {ensureMinOne(slide1.lowlights).map((b, idx) => (
-                    <div key={`${sfLowlightsSeedId}_${idx}`} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
-                      <input
-                        className="input"
-                        value={b}
-                        onChange={(e) => updateBulletListItem("lowlights", idx, e.target.value)}
-                        placeholder={`Lowlight ${idx + 1}`}
-                        aria-label={`Lowlight ${idx + 1}`}
-                      />
-                      <button
-                        type="button"
-                        className="btn btnSmall btnGhost"
-                        onClick={() => removeBulletListItem("lowlights", idx)}
-                        disabled={ensureMinOne(slide1.lowlights).length <= 1}
-                        aria-label={`Remove lowlight ${idx + 1}`}
-                        title="Remove"
-                      >
-                        −
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <BulletInputs
+              title="Project highlights"
+              hint="Key wins and progress for the sprint."
+              listKey="highlights"
+              seedId={sfHighlightsSeedId}
+              defaultOpen
+            />
 
-            <div className="divider" />
+            <BulletInputs
+              title="Project lowlights"
+              hint="Risks, blockers, or issues."
+              listKey="lowlights"
+              seedId={sfLowlightsSeedId}
+              defaultOpen={false}
+            />
 
-            <div>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                <span className="label">Team members</span>
-                <button type="button" className="btn btnSmall" onClick={addTeamMember}>
-                  + Add row
+            <Section
+              title="Team members"
+              hint="Shown as a table on Slide 1."
+              defaultOpen={false}
+              actions={
+                <button type="button" className="btn btnSmall btnGhost" onClick={addTeamMember}>
+                  Add row
                 </button>
-              </div>
-
-              <div style={{ marginTop: 10, overflowX: "auto" }}>
+              }
+            >
+              <div style={{ overflowX: "auto" }}>
                 <table className="sfEditorTable" aria-label="Team members table">
                   <thead>
                     <tr>
@@ -693,7 +736,7 @@ export default function SlideForm({
                   </thead>
                   <tbody>
                     {team.map((m, idx) => (
-                      <tr key={idx}>
+                      <tr key={idx} className="sfRow">
                         <td>
                           <input
                             className="input"
@@ -715,7 +758,7 @@ export default function SlideForm({
                         <td style={{ textAlign: "right" }}>
                           <button
                             type="button"
-                            className="btn btnSmall btnGhost"
+                            className="btn btnSmall btnGhost sfRowAction"
                             onClick={() => removeTeamMember(idx)}
                             aria-label={`Remove team member ${idx + 1}`}
                             title="Remove row"
@@ -730,79 +773,89 @@ export default function SlideForm({
 
                 <div className="helper">Tip: keep 3–6 rows for best slide density.</div>
               </div>
-            </div>
+            </Section>
 
-            <div className="divider" />
-
-            <div className="row2">
-              <div>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                  <span className="label">Key activities completed (previous week)</span>
-                  <button type="button" className="btn btnSmall" onClick={() => addBulletListItem("prevWeekActivities")}>
-                    + Add
-                  </button>
-                </div>
-                <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-                  {ensureMinOne(slide1.prevWeekActivities).map((b, idx) => (
-                    <div key={`${sfPrevWeekSeedId}_${idx}`} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
-                      <input
-                        className="input"
-                        value={b}
-                        onChange={(e) => updateBulletListItem("prevWeekActivities", idx, e.target.value)}
-                        placeholder={`Activity ${idx + 1}`}
-                        aria-label={`Previous week activity ${idx + 1}`}
-                      />
-                      <button
-                        type="button"
-                        className="btn btnSmall btnGhost"
-                        onClick={() => removeBulletListItem("prevWeekActivities", idx)}
-                        disabled={ensureMinOne(slide1.prevWeekActivities).length <= 1}
-                        aria-label={`Remove previous week activity ${idx + 1}`}
-                        title="Remove"
-                      >
-                        −
-                      </button>
+            <Section title="Weekly activities" hint="Previous vs current week lists." defaultOpen={false}>
+              <div className="row2">
+                <div>
+                  <div className="formInlineHeader">
+                    <div>
+                      <div className="formInlineTitle">Completed (previous week)</div>
+                      <div className="formInlineHint">What got done last week.</div>
                     </div>
-                  ))}
+                    <button type="button" className="btn btnSmall btnGhost" onClick={() => addBulletListItem("prevWeekActivities")}>
+                      Add
+                    </button>
+                  </div>
+
+                  <div className="formList">
+                    {ensureMinOne(slide1.prevWeekActivities).map((b, idx) => (
+                      <div key={`${sfPrevWeekSeedId}_${idx}`} className="formListRow">
+                        <input
+                          className="input"
+                          value={b}
+                          onChange={(e) => updateBulletListItem("prevWeekActivities", idx, e.target.value)}
+                          placeholder={`Activity ${idx + 1}`}
+                          aria-label={`Previous week activity ${idx + 1}`}
+                        />
+                        <button
+                          type="button"
+                          className="btn btnSmall btnGhost formRowAction"
+                          onClick={() => removeBulletListItem("prevWeekActivities", idx)}
+                          disabled={ensureMinOne(slide1.prevWeekActivities).length <= 1}
+                          aria-label={`Remove previous week activity ${idx + 1}`}
+                          title="Remove"
+                        >
+                          −
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="formInlineHeader">
+                    <div>
+                      <div className="formInlineTitle">Planned (current week)</div>
+                      <div className="formInlineHint">What’s planned next.</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btnSmall btnGhost"
+                      onClick={() => addBulletListItem("currentWeekActivities")}
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  <div className="formList">
+                    {ensureMinOne(slide1.currentWeekActivities).map((b, idx) => (
+                      <div key={`${sfCurrentWeekSeedId}_${idx}`} className="formListRow">
+                        <input
+                          className="input"
+                          value={b}
+                          onChange={(e) => updateBulletListItem("currentWeekActivities", idx, e.target.value)}
+                          placeholder={`Planned activity ${idx + 1}`}
+                          aria-label={`Current week activity ${idx + 1}`}
+                        />
+                        <button
+                          type="button"
+                          className="btn btnSmall btnGhost formRowAction"
+                          onClick={() => removeBulletListItem("currentWeekActivities", idx)}
+                          disabled={ensureMinOne(slide1.currentWeekActivities).length <= 1}
+                          aria-label={`Remove current week activity ${idx + 1}`}
+                          title="Remove"
+                        >
+                          −
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                  <span className="label">Key activities planned (current week)</span>
-                  <button type="button" className="btn btnSmall" onClick={() => addBulletListItem("currentWeekActivities")}>
-                    + Add
-                  </button>
-                </div>
-                <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-                  {ensureMinOne(slide1.currentWeekActivities).map((b, idx) => (
-                    <div key={`${sfCurrentWeekSeedId}_${idx}`} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
-                      <input
-                        className="input"
-                        value={b}
-                        onChange={(e) => updateBulletListItem("currentWeekActivities", idx, e.target.value)}
-                        placeholder={`Planned activity ${idx + 1}`}
-                        aria-label={`Current week activity ${idx + 1}`}
-                      />
-                      <button
-                        type="button"
-                        className="btn btnSmall btnGhost"
-                        onClick={() => removeBulletListItem("currentWeekActivities", idx)}
-                        disabled={ensureMinOne(slide1.currentWeekActivities).length <= 1}
-                        aria-label={`Remove current week activity ${idx + 1}`}
-                        title="Remove"
-                      >
-                        −
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="helper">
-              Slide preview updates live. Export will place Skill Factory slides after the Global Cover.
-            </div>
+              <div className="helper">Slide preview updates live. Export places Skill Factory slides after the Global Cover.</div>
+            </Section>
           </div>
         </div>
       </section>
@@ -851,10 +904,6 @@ export default function SlideForm({
 
       accepted.forEach((file, localIdx) => {
         const objectUrl = URL.createObjectURL(file);
-        const placeholder = { objectUrl, fileName: file.name, width: 0, height: 0 };
-
-        // Optimistically add in order
-        const optimistic = [...base, ...accepted.slice(0, localIdx + 1).map((f2, j) => (j === localIdx ? placeholder : null))].filter(Boolean);
 
         // Only update optimistically on first item to avoid multiple re-renders;
         // instead, do a single append upfront then patch dimensions per image load.
@@ -922,44 +971,62 @@ export default function SlideForm({
       update({ metricsImages: next });
     };
 
-    // Responsive columns (4/2/1) driven by CSS in theme.css via --sf2MasonryCols.
     return (
       <section className="card" aria-label="Skill Factory Slide 2 editor">
         <div className="cardHeader">
           <h2 className="cardTitle">Skill Factory – Slide 2</h2>
-          <p className="cardHint">Upload one or more metrics screenshots (PNG/JPG). Drag anywhere on a tile to reorder.</p>
+          <p className="cardHint">Upload metrics screenshots (PNG/JPG). Drag tiles to reorder.</p>
         </div>
 
         <div className="cardBody">
-          <div className="row">
-            <div>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                <label className="label" htmlFor={sf2UploadId} style={{ margin: 0 }}>
-                  Metrics images (PNG/JPG)
-                </label>
-
-                {metrics.length ? (
+          <div className="formStack">
+            <Section
+              title="Upload"
+              hint="Local-only: used for preview and PPT export."
+              defaultOpen
+              actions={
+                metrics.length ? (
                   <button type="button" className="btn btnSmall btnGhost" onClick={clearAll}>
                     Clear all
                   </button>
-                ) : null}
+                ) : null
+              }
+            >
+              <div className="row">
+                <div>
+                  <label className="label" htmlFor={sf2UploadId}>
+                    Metrics images (PNG/JPG)
+                  </label>
+                  <input
+                    id={sf2UploadId}
+                    ref={sf2FileInputRef}
+                    className="input"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    multiple
+                    onChange={(e) => onAddFiles(e.target.files)}
+                    aria-label="Upload Skill Factory metrics images (local only)"
+                  />
+                  <div className="helper">
+                    Tip: Drag a tile to a new position (drag-anywhere). Export mirrors this order (first 3 use the main Slide 2 placement).
+                  </div>
+
+                  {!metrics.length ? (
+                    <EmptyState
+                      badge="Required"
+                      title="No metrics images"
+                      description="Upload one or more screenshots to populate Skill Factory Slide 2."
+                    />
+                  ) : null}
+                </div>
               </div>
+            </Section>
 
-              <input
-                id={sf2UploadId}
-                ref={sf2FileInputRef}
-                className="input"
-                type="file"
-                accept="image/png,image/jpeg"
-                multiple
-                onChange={(e) => onAddFiles(e.target.files)}
-                aria-label="Upload Skill Factory metrics images (local only)"
-              />
-
-              <div className="helper">
-                Tip: Drag a tile to a new position (drag-anywhere). Export mirrors this order (first 3 use the main Slide 2 placement).
-              </div>
-
+            <Section
+              title="Images"
+              hint={metrics.length ? "Hover a tile to reveal actions." : "Add images to preview and reorder."}
+              defaultOpen={!!metrics.length}
+            >
               {metrics.length ? (
                 <div className="sf2MasonryWrap" aria-label="Uploaded metrics images">
                   <MasonryDnD
@@ -982,7 +1049,7 @@ export default function SlideForm({
                             </span>
                             <button
                               type="button"
-                              className="btn btnSmall btnGhost"
+                              className="btn btnSmall btnGhost sf2TileRemove"
                               onClick={onRemove}
                               aria-label={`Remove metrics image ${index + 1}`}
                               title="Remove"
@@ -1011,26 +1078,17 @@ export default function SlideForm({
                     )}
                   />
                 </div>
-              ) : (
-                <div className="coverUploadEmpty">
-                  <div className="badge">Required for Slide 2</div>
-                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.4 }}>
-                    Upload one or more metrics images to populate Skill Factory Slide 2.
-                  </div>
-                </div>
-              )}
-            </div>
+              ) : null}
 
-            <div className="helper">
-              Slide preview updates live. Export will insert Skill Factory Slide 2 directly after Skill Factory Slide 1.
-            </div>
+              <div className="helper">Slide preview updates live. Export will insert Skill Factory Slide 2 directly after Skill Factory Slide 1.</div>
+            </Section>
           </div>
         </div>
       </section>
     );
   }
 
-  // ---- Normal slide editor (existing behavior) ----
+  // ---- Normal slide editor ----
   if (!slide) {
     return (
       <section className="card" aria-label="Slide editor">
@@ -1111,163 +1169,173 @@ export default function SlideForm({
     <section className="card" aria-label="Slide editor">
       <div className="cardHeader">
         <h2 className="cardTitle">Editor</h2>
-        <p className="cardHint">Update the slide content and theme. Changes reflect instantly in preview.</p>
+        <p className="cardHint">Update content and theme. Changes reflect instantly in preview.</p>
       </div>
 
       <div className="cardBody">
-        <div className="row">
-          <div>
-            <label className="label" htmlFor={titleId}>
-              Slide title <span aria-hidden="true" style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <input
-              id={titleId}
-              className="input"
-              value={slide.title}
-              onChange={(e) => update({ title: e.target.value })}
-              placeholder="e.g., Quarterly Results"
-              required
-            />
-            <div className="helper">Required for export.</div>
-          </div>
+        <div className="formStack">
+          <Section title="Text" hint="Title, subtitle, and bullet points." defaultOpen>
+            <div className="row">
+              <div>
+                <label className="label" htmlFor={titleId}>
+                  Slide title <span aria-hidden="true" style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  id={titleId}
+                  className="input"
+                  value={slide.title}
+                  onChange={(e) => update({ title: e.target.value })}
+                  placeholder="e.g., Quarterly Results"
+                  required
+                />
+                <div className="helper">Required for export.</div>
+              </div>
 
-          <div>
-            <label className="label" htmlFor={subtitleId}>
-              Subtitle
-            </label>
-            <input
-              id={subtitleId}
-              className="input"
-              value={slide.subtitle}
-              onChange={(e) => update({ subtitle: e.target.value })}
-              placeholder="e.g., Highlights and next steps"
-            />
-          </div>
+              <div>
+                <label className="label" htmlFor={subtitleId}>
+                  Subtitle
+                </label>
+                <input
+                  id={subtitleId}
+                  className="input"
+                  value={slide.subtitle}
+                  onChange={(e) => update({ subtitle: e.target.value })}
+                  placeholder="e.g., Highlights and next steps"
+                />
+              </div>
 
-          <div>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-              <span className="label">Bullet points</span>
-              <button type="button" className="btn btnSmall" onClick={addBullet}>
-                + Add bullet
-              </button>
-            </div>
-
-            <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-              {(slide.bullets || []).map((b, idx) => (
-                <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
-                  <input
-                    className="input"
-                    value={b}
-                    onChange={(e) => updateBullet(idx, e.target.value)}
-                    placeholder={`Bullet ${idx + 1}`}
-                    aria-label={`Bullet ${idx + 1}`}
-                  />
-                  <button
-                    type="button"
-                    className="btn btnSmall btnGhost"
-                    onClick={() => removeBullet(idx)}
-                    aria-label={`Remove bullet ${idx + 1}`}
-                    title="Remove bullet"
-                    disabled={(slide.bullets || []).length <= 1}
-                  >
-                    −
+              <Section
+                title="Bullet points"
+                hint="Leave a bullet empty to omit it from export."
+                defaultOpen
+                actions={
+                  <button type="button" className="btn btnSmall btnGhost" onClick={addBullet}>
+                    Add
                   </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="helper">Tip: leave bullet empty to omit it from export.</div>
-          </div>
-
-          <div className="divider" />
-
-          <div className="row2">
-            <div>
-              <div className="label">Background</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {bgOptions.map((opt) => (
-                  <ColorSwatch
-                    key={opt.id}
-                    color={opt.background}
-                    selected={slide.theme?.backgroundPresetId === opt.id}
-                    onClick={() =>
-                      update({
-                        theme: {
-                          ...slide.theme,
-                          backgroundPresetId: opt.id
-                        }
-                      })
-                    }
-                    label={`Background: ${opt.label}`}
-                  />
-                ))}
-              </div>
-              <div className="helper">
-                Selected: <strong>{preset.label}</strong>
-              </div>
-            </div>
-
-            <div>
-              <div className="label">Text color</div>
-              <input
-                className="input"
-                type="color"
-                value={slide.theme?.textColor || preset.text}
-                onChange={(e) =>
-                  update({
-                    theme: {
-                      ...slide.theme,
-                      textColor: e.target.value
-                    }
-                  })
                 }
-                aria-label="Text color"
-                style={{ padding: 6, height: 42 }}
-              />
-              <div className="helper">Use darker text on light backgrounds for readability.</div>
+              >
+                <div className="formList">
+                  {(slide.bullets || []).map((b, idx) => (
+                    <div key={idx} className="formListRow">
+                      <input
+                        className="input"
+                        value={b}
+                        onChange={(e) => updateBullet(idx, e.target.value)}
+                        placeholder={`Bullet ${idx + 1}`}
+                        aria-label={`Bullet ${idx + 1}`}
+                      />
+                      <button
+                        type="button"
+                        className="btn btnSmall btnGhost formRowAction"
+                        onClick={() => removeBullet(idx)}
+                        aria-label={`Remove bullet ${idx + 1}`}
+                        title="Remove bullet"
+                        disabled={(slide.bullets || []).length <= 1}
+                      >
+                        −
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </Section>
             </div>
-          </div>
+          </Section>
 
-          <div className="divider" />
+          <Section title="Theme" hint="Background and text styling." defaultOpen={false}>
+            <div className="row2">
+              <div>
+                <div className="label">Background</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {bgOptions.map((opt) => (
+                    <ColorSwatch
+                      key={opt.id}
+                      color={opt.background}
+                      selected={slide.theme?.backgroundPresetId === opt.id}
+                      onClick={() =>
+                        update({
+                          theme: {
+                            ...slide.theme,
+                            backgroundPresetId: opt.id
+                          }
+                        })
+                      }
+                      label={`Background: ${opt.label}`}
+                    />
+                  ))}
+                </div>
+                <div className="helper">
+                  Selected: <strong>{preset.label}</strong>
+                </div>
+              </div>
 
-          <div>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-              <span className="label">Optional image</span>
-              {slide.image?.objectUrl ? (
+              <div>
+                <div className="label">Text color</div>
+                <input
+                  className="input"
+                  type="color"
+                  value={slide.theme?.textColor || preset.text}
+                  onChange={(e) =>
+                    update({
+                      theme: {
+                        ...slide.theme,
+                        textColor: e.target.value
+                      }
+                    })
+                  }
+                  aria-label="Text color"
+                  style={{ padding: 6, height: 42 }}
+                />
+                <div className="helper">Use darker text on light backgrounds for readability.</div>
+              </div>
+            </div>
+          </Section>
+
+          <Section
+            title="Image"
+            hint="Local-only: used for preview and PPT export."
+            defaultOpen={false}
+            actions={
+              slide.image?.objectUrl ? (
                 <button type="button" className="btn btnSmall btnGhost" onClick={clearImage}>
                   Remove
                 </button>
-              ) : null}
-            </div>
-
-            <input
-              ref={fileInputRef}
-              className="input"
-              type="file"
-              accept="image/*"
-              onChange={(e) => onPickImage(e.target.files?.[0])}
-              aria-label="Upload image for this slide (local only)"
-            />
-            <div className="helper">Local-only: your file never leaves your browser.</div>
-
-            {slide.image?.objectUrl ? (
-              <div
-                style={{
-                  marginTop: 10,
-                  borderRadius: 14,
-                  border: "1px solid rgba(17,24,39,0.12)",
-                  overflow: "hidden",
-                  background: "rgba(17,24,39,0.02)"
-                }}
-              >
-                <img
-                  src={slide.image.objectUrl}
-                  alt={slide.image.fileName ? `Preview: ${slide.image.fileName}` : "Uploaded preview"}
-                  style={{ display: "block", width: "100%", height: "auto" }}
+              ) : null
+            }
+          >
+            <div className="row">
+              <div>
+                <input
+                  ref={fileInputRef}
+                  className="input"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => onPickImage(e.target.files?.[0])}
+                  aria-label="Upload image for this slide (local only)"
                 />
+                <div className="helper">Your file never leaves your browser.</div>
+
+                {slide.image?.objectUrl ? (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      borderRadius: 14,
+                      border: "1px solid rgba(17,24,39,0.12)",
+                      overflow: "hidden",
+                      background: "rgba(17,24,39,0.02)"
+                    }}
+                  >
+                    <img
+                      src={slide.image.objectUrl}
+                      alt={slide.image.fileName ? `Preview: ${slide.image.fileName}` : "Uploaded preview"}
+                      style={{ display: "block", width: "100%", height: "auto" }}
+                    />
+                  </div>
+                ) : (
+                  <EmptyState badge="Optional" title="No image" description="Upload an image if this slide needs a visual panel." />
+                )}
               </div>
-            ) : null}
-          </div>
+            </div>
+          </Section>
         </div>
       </div>
     </section>

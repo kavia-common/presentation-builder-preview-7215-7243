@@ -191,6 +191,41 @@ a{color:inherit}
   .editorBreadcrumbRow .bcCrumb{max-width:100%}
 }
 
+/* --- Editor form sections (collapsible, minimal) --- */
+.formStack{display:grid;gap:12px}
+.formSection{border:1px solid rgba(17,24,39,0.08);border-radius:14px;background:rgba(17,24,39,0.015);overflow:hidden}
+.formSectionHeader{width:100%;appearance:none;border:0;background:transparent;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 12px;cursor:pointer;text-align:left}
+.formSectionHeader:hover{background:rgba(17,24,39,0.02)}
+.formSectionHeaderLeft{flex:1}
+.formSectionTitleRow{display:flex;align-items:center;gap:8px}
+.formSectionTitle{font-size:12px;font-weight:950;letter-spacing:.02em;color:rgba(17,24,39,0.86);text-transform:none}
+.formSectionChevron{font-size:12px;color:rgba(17,24,39,0.55);font-weight:900}
+.formSectionHint{margin-top:3px;font-size:12px;color:rgba(17,24,39,0.58);line-height:1.35}
+.formSectionHeaderActions{display:flex;align-items:center;gap:8px;opacity:.95}
+.formSectionBody{padding:12px 12px;border-top:1px solid rgba(17,24,39,0.06)}
+.formInlineHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.formInlineTitle{font-size:12px;font-weight:900;color:rgba(17,24,39,0.82)}
+.formInlineHint{margin-top:3px;font-size:12px;color:rgba(17,24,39,0.58);line-height:1.35}
+
+/* List rows with contextual actions (remove shown on hover/focus) */
+.formList{display:grid;gap:8px}
+.formListRow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.formRowAction{opacity:0;pointer-events:none;transition:opacity .12s ease}
+.formListRow:hover .formRowAction,.formListRow:focus-within .formRowAction{opacity:1;pointer-events:auto}
+
+/* Empty state */
+.formEmptyState{margin-top:10px;border-radius:14px;border:1px dashed rgba(17,24,39,0.18);padding:14px;background:rgba(17,24,39,0.02)}
+.formEmptyTitle{margin-top:10px;font-size:12px;font-weight:900;color:rgba(17,24,39,0.82)}
+.formEmptyDesc{margin-top:6px;font-size:12px;color:rgba(17,24,39,0.62);line-height:1.45}
+
+/* Skill Factory table row actions: reduce always-visible buttons */
+.sfRowAction{opacity:0;pointer-events:none;transition:opacity .12s ease}
+.sfRow:hover .sfRowAction,.sfRow:focus-within .sfRowAction{opacity:1;pointer-events:auto}
+
+/* Skill Factory Slide 2 tile actions: keep subtle, reveal remove on hover */
+.sf2TileRemove{opacity:0;pointer-events:none;transition:opacity .12s ease}
+.sf2Tile:hover .sf2TileRemove,.sf2Tile:focus-within .sf2TileRemove{opacity:1;pointer-events:auto}
+
 /* Presentation preview modal */
 .ppBackdrop{position:fixed;inset:0;background:rgba(17,24,39,0.55);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;overflow:hidden}
 .ppModal{width:min(1260px, 96vw);height:min(820px, 92vh);background:#fff;border-radius:18px;border:1px solid rgba(255,255,255,0.25);box-shadow:0 26px 70px rgba(0,0,0,0.25);display:flex;flex-direction:column;overflow:hidden;min-width:0}
