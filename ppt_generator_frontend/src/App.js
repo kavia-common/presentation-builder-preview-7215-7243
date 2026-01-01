@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import "./App.css";
 import "./styles/theme.css";
 
@@ -6,6 +6,7 @@ import SlideList from "./components/SlideList";
 import SlideForm from "./components/SlideForm";
 import SlidePreview from "./components/SlidePreview";
 import Toast from "./components/Toast";
+import PresentationPreviewModal from "./components/PresentationPreviewModal";
 
 import { createEmptySlide, validateSlides } from "./utils/slideModel";
 import { exportSlidesToPptx } from "./utils/pptExport";
@@ -39,6 +40,7 @@ function App() {
   const [selectedId, setSelectedId] = useState(() => GLOBAL_COVER_ID);
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [toast, setToast] = useState({ open: false, variant: "info", title: "", message: "", autoHideMs: 0 });
 
   const isCoverSelected = selectedId === GLOBAL_COVER_ID;
@@ -121,11 +123,15 @@ function App() {
     setGlobalCoverSlide(updatedCover);
   };
 
-  const onGenerate = async () => {
+  const buildSuggestedFileName = useCallback(() => {
+    const coverTitle = safeFileBaseName(globalCoverSlide?.title);
+    return `${coverTitle || "Presentation"}_${makeTimestamp()}.pptx`;
+  }, [globalCoverSlide?.title]);
+
+  const onDownloadFromPreview = useCallback(async () => {
     if (!canGenerate || isGenerating) return;
 
-    const coverTitle = safeFileBaseName(globalCoverSlide?.title);
-    const fileName = `${coverTitle || "Presentation"}_${makeTimestamp()}.pptx`;
+    const fileName = buildSuggestedFileName();
 
     setIsGenerating(true);
     setToast({
@@ -158,6 +164,17 @@ function App() {
     } finally {
       setIsGenerating(false);
     }
+  }, [canGenerate, isGenerating, buildSuggestedFileName, globalCoverSlide, slides]);
+
+  const onGenerate = () => {
+    // Preview-first UX: open the full-deck preview (cover + all slides) before download.
+    if (!canGenerate || isGenerating) return;
+    setIsPreviewOpen(true);
+  };
+
+  const onDirectExport = async () => {
+    // Secondary action: keep the legacy behavior available if users want one-click download.
+    await onDownloadFromPreview();
   };
 
   const previewProps = useMemo(() => {
@@ -185,6 +202,17 @@ function App() {
     <div className="appShell">
       <Toast toast={toast} onClose={() => setToast((t) => ({ ...t, open: false }))} />
 
+      <PresentationPreviewModal
+        open={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        cover={globalCoverSlide}
+        slides={slides}
+        onDownload={onDownloadFromPreview}
+        canDownload={canGenerate}
+        isDownloading={isGenerating}
+        fileNameHint={buildSuggestedFileName()}
+      />
+
       <header className="appHeader">
         <div className="container headerInner">
           <div className="headerTitle">
@@ -199,15 +227,27 @@ function App() {
             <button className="btn btnSecondary" type="button" onClick={addSlide} disabled={isGenerating} aria-disabled={isGenerating}>
               + Add slide
             </button>
+
             <button
               className="btn"
               type="button"
               onClick={onGenerate}
               disabled={generateDisabled}
               aria-disabled={generateDisabled}
-              title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Generate PPTX"}
+              title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Open presentation preview"}
             >
               {isGenerating ? "Generating…" : "Generate PPT"}
+            </button>
+
+            <button
+              className="btn btnGhost"
+              type="button"
+              onClick={onDirectExport}
+              disabled={generateDisabled}
+              aria-disabled={generateDisabled}
+              title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Directly generate and download without preview"}
+            >
+              Direct download
             </button>
           </div>
         </div>
@@ -249,7 +289,12 @@ function App() {
                     <li>Add slides with <strong>+ Add</strong>.</li>
                     <li>Fill in a <strong>title</strong> (required), subtitle, bullets, and optional image.</li>
                     <li>Pick theme colors and confirm in <strong>Preview</strong>.</li>
-                    <li>Click <strong>Generate PPT</strong> to download.</li>
+                    <li>
+                      Click <strong>Generate PPT</strong> to preview the full deck and download.
+                      <div className="kbdHint" style={{ marginTop: 6 }}>
+                        In preview: use ←/→ to navigate, Esc to close.
+                      </div>
+                    </li>
                   </ol>
 
                   <div className="divider" />

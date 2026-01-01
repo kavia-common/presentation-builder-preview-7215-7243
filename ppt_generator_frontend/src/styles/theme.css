@@ -503,3 +503,217 @@ a {
   padding: 14px;
   background: rgba(37, 99, 235, 0.06);
 }
+
+/* =========================
+   Presentation Preview Modal
+   ========================= */
+.ppBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(17, 24, 39, 0.55);
+  backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.ppModal {
+  width: min(1180px, 100%);
+  height: min(760px, calc(100vh - 36px));
+  background: var(--ocean-surface);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 18px;
+  box-shadow: 0 30px 70px rgba(17, 24, 39, 0.35);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+
+.ppHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px;
+  border-bottom: 1px solid var(--ocean-border);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(255, 255, 255, 1));
+}
+
+.ppTitleBlock {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.ppTitle {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--ocean-text);
+}
+
+.ppSubTitle {
+  font-size: 12px;
+  color: var(--ocean-muted);
+}
+
+.ppHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ppZoom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ppZoomLabel {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ocean-muted);
+}
+
+.ppBody {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  height: 100%;
+  min-height: 0;
+}
+
+.ppThumbs {
+  border-right: 1px solid var(--ocean-border);
+  background: rgba(249, 250, 251, 0.9);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+}
+
+.ppThumbsHeader {
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.ppThumbsList {
+  overflow: auto;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.ppThumb {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 14px;
+  background: #fff;
+  padding: 10px;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.ppThumb:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.10);
+}
+
+.ppThumbActive {
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.18);
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.ppThumbNo {
+  font-size: 11px;
+  font-weight: 900;
+  color: #1d4ed8;
+  letter-spacing: 0.02em;
+}
+
+.ppThumbLabel {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ocean-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ppPreviewArea {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.ppNav {
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.ppPreviewFrame {
+  position: relative;
+  min-height: 0;
+  overflow: auto;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.10), rgba(249, 250, 251, 1));
+  padding: 14px;
+}
+
+.ppScaled {
+  transform-origin: top left;
+  width: 1280px;
+  /* Height is derived from aspect ratio (16:9) via SlidePreview internal layout */
+}
+
+.ppSlideCard {
+  /* SlidePreview already has its own card; we just prevent it from stretching too wide */
+  width: 1280px;
+}
+
+.ppFooterHint {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--ocean-muted);
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+@media (max-width: 980px) {
+  .ppBody {
+    grid-template-columns: 200px 1fr;
+  }
+  .ppScaled,
+  .ppSlideCard {
+    width: 1100px;
+  }
+}
+
+@media (max-width: 820px) {
+  .ppBody {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .ppThumbs {
+    border-right: none;
+    border-bottom: 1px solid var(--ocean-border);
+    grid-template-rows: auto auto;
+  }
+  .ppThumbsList {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(160px, 1fr);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
