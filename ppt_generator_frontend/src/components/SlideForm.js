@@ -33,8 +33,18 @@ function ColorSwatch({ color, selected, onClick, label }) {
 }
 
 // PUBLIC_INTERFACE
-export default function SlideForm({ mode = "slide", slide, onChange, cover, onCoverChange, last, onLastChange }) {
-  /** Form used to edit the currently selected slide OR pinned Global Cover OR pinned Global Last Page. */
+export default function SlideForm({
+  mode = "slide",
+  slide,
+  onChange,
+  cover,
+  onCoverChange,
+  last,
+  onLastChange,
+  skillFactory,
+  onSkillFactorySlide1Change
+}) {
+  /** Form used to edit the currently selected slide OR pinned Global Cover OR pinned Global Last Page OR Skill Factory Slide 1. */
   const titleId = useId();
   const subtitleId = useId();
   const taglineId = useId();
@@ -46,6 +56,14 @@ export default function SlideForm({ mode = "slide", slide, onChange, cover, onCo
   const lastBrandId = useId();
   const lastLogoInputRef = useRef(null);
   const lastBgInputRef = useRef(null);
+
+  // Skill Factory Slide 1 editor ids MUST be defined unconditionally (rules-of-hooks).
+  const sfFactoryNameId = useId();
+  const sfSprintLabelId = useId();
+  const sfHighlightsSeedId = useId();
+  const sfLowlightsSeedId = useId();
+  const sfPrevWeekSeedId = useId();
+  const sfCurrentWeekSeedId = useId();
 
   const preset = useMemo(() => {
     const pid = slide?.theme?.backgroundPresetId || "surface";
@@ -484,6 +502,301 @@ export default function SlideForm({ mode = "slide", slide, onChange, cover, onCo
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ---- Skill Factory Slide 1 editor ----
+  if (mode === "skillFactorySlide1") {
+    const slide1 = skillFactory?.slides?.slide1;
+
+    if (!slide1) {
+      return (
+        <section className="card" aria-label="Skill Factory Slide 1 editor">
+          <div className="cardHeader">
+            <h2 className="cardTitle">Skill Factory – Slide 1</h2>
+            <p className="cardHint">Skill Factory data not available.</p>
+          </div>
+          <div className="cardBody">
+            <div className="helper helperError">Unable to load Skill Factory Slide 1 state.</div>
+          </div>
+        </section>
+      );
+    }
+
+    const update = (patch) => onSkillFactorySlide1Change?.({ ...slide1, ...patch });
+
+    const ensureMinOne = (arr) => {
+      const safe = Array.isArray(arr) ? arr : [];
+      return safe.length ? safe : [""];
+    };
+
+    const updateBulletListItem = (key, idx, value) => {
+      const next = [...ensureMinOne(slide1[key])];
+      next[idx] = value;
+      update({ [key]: next });
+    };
+
+    const addBulletListItem = (key) => update({ [key]: [...ensureMinOne(slide1[key]), ""] });
+
+    const removeBulletListItem = (key, idx) => {
+      const next = [...ensureMinOne(slide1[key])];
+      next.splice(idx, 1);
+      update({ [key]: next.length ? next : [""] });
+    };
+
+    const team = Array.isArray(slide1.teamMembers) ? slide1.teamMembers : [];
+    const updateTeamMember = (idx, patch) => {
+      const next = team.map((m, i) => (i === idx ? { ...m, ...patch } : m));
+      update({ teamMembers: next });
+    };
+
+    const addTeamMember = () => update({ teamMembers: [...team, { name: "", role: "" }] });
+
+    const removeTeamMember = (idx) => {
+      const next = [...team];
+      next.splice(idx, 1);
+      update({ teamMembers: next.length ? next : [{ name: "", role: "" }] });
+    };
+
+    return (
+      <section className="card" aria-label="Skill Factory Slide 1 editor">
+        <div className="cardHeader">
+          <h2 className="cardTitle">Skill Factory – Slide 1</h2>
+          <p className="cardHint">Update fields for highlights, lowlights, team, and weekly activities.</p>
+        </div>
+
+        <div className="cardBody">
+          <div className="row">
+            <div className="row2">
+              <div>
+                <label className="label" htmlFor={sfFactoryNameId}>
+                  Skill Factory name
+                </label>
+                <input
+                  id={sfFactoryNameId}
+                  className="input"
+                  value={slide1.factoryName || ""}
+                  onChange={(e) => update({ factoryName: e.target.value })}
+                  placeholder="e.g., Digital Applications: Data Engineering Skill Factory"
+                />
+              </div>
+
+              <div>
+                <label className="label" htmlFor={sfSprintLabelId}>
+                  Sprint label / date
+                </label>
+                <input
+                  id={sfSprintLabelId}
+                  className="input"
+                  value={slide1.sprintLabel || ""}
+                  onChange={(e) => update({ sprintLabel: e.target.value })}
+                  placeholder="e.g., Sprint 12 (25-Dec - 01-Jan)"
+                />
+              </div>
+            </div>
+
+            <div className="divider" />
+
+            <div className="row2">
+              <div>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                  <span className="label">Project highlights</span>
+                  <button type="button" className="btn btnSmall btnSecondary" onClick={() => addBulletListItem("highlights")}>
+                    + Add
+                  </button>
+                </div>
+                <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                  {ensureMinOne(slide1.highlights).map((b, idx) => (
+                    <div key={`${sfHighlightsSeedId}_${idx}`} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
+                      <input
+                        className="input"
+                        value={b}
+                        onChange={(e) => updateBulletListItem("highlights", idx, e.target.value)}
+                        placeholder={`Highlight ${idx + 1}`}
+                        aria-label={`Highlight ${idx + 1}`}
+                      />
+                      <button
+                        type="button"
+                        className="btn btnSmall btnGhost"
+                        onClick={() => removeBulletListItem("highlights", idx)}
+                        disabled={ensureMinOne(slide1.highlights).length <= 1}
+                        aria-label={`Remove highlight ${idx + 1}`}
+                        title="Remove"
+                      >
+                        −
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                  <span className="label">Project lowlights</span>
+                  <button type="button" className="btn btnSmall btnSecondary" onClick={() => addBulletListItem("lowlights")}>
+                    + Add
+                  </button>
+                </div>
+                <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                  {ensureMinOne(slide1.lowlights).map((b, idx) => (
+                    <div key={`${sfLowlightsSeedId}_${idx}`} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
+                      <input
+                        className="input"
+                        value={b}
+                        onChange={(e) => updateBulletListItem("lowlights", idx, e.target.value)}
+                        placeholder={`Lowlight ${idx + 1}`}
+                        aria-label={`Lowlight ${idx + 1}`}
+                      />
+                      <button
+                        type="button"
+                        className="btn btnSmall btnGhost"
+                        onClick={() => removeBulletListItem("lowlights", idx)}
+                        disabled={ensureMinOne(slide1.lowlights).length <= 1}
+                        aria-label={`Remove lowlight ${idx + 1}`}
+                        title="Remove"
+                      >
+                        −
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="divider" />
+
+            <div>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                <span className="label">Team members</span>
+                <button type="button" className="btn btnSmall btnSecondary" onClick={addTeamMember}>
+                  + Add row
+                </button>
+              </div>
+
+              <div style={{ marginTop: 10, overflowX: "auto" }}>
+                <table className="sfEditorTable" aria-label="Team members table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: "45%" }}>Name</th>
+                      <th style={{ width: "45%" }}>Role</th>
+                      <th style={{ width: "10%" }} aria-label="Actions" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {team.map((m, idx) => (
+                      <tr key={idx}>
+                        <td>
+                          <input
+                            className="input"
+                            value={m?.name || ""}
+                            onChange={(e) => updateTeamMember(idx, { name: e.target.value })}
+                            placeholder="Name"
+                            aria-label={`Team member ${idx + 1} name`}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            className="input"
+                            value={m?.role || ""}
+                            onChange={(e) => updateTeamMember(idx, { role: e.target.value })}
+                            placeholder="Role"
+                            aria-label={`Team member ${idx + 1} role`}
+                          />
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          <button
+                            type="button"
+                            className="btn btnSmall btnGhost"
+                            onClick={() => removeTeamMember(idx)}
+                            aria-label={`Remove team member ${idx + 1}`}
+                            title="Remove row"
+                          >
+                            −
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="helper">Tip: keep 3–6 rows for best slide density.</div>
+              </div>
+            </div>
+
+            <div className="divider" />
+
+            <div className="row2">
+              <div>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                  <span className="label">Key activities completed (previous week)</span>
+                  <button type="button" className="btn btnSmall btnSecondary" onClick={() => addBulletListItem("prevWeekActivities")}>
+                    + Add
+                  </button>
+                </div>
+                <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                  {ensureMinOne(slide1.prevWeekActivities).map((b, idx) => (
+                    <div key={`${sfPrevWeekSeedId}_${idx}`} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
+                      <input
+                        className="input"
+                        value={b}
+                        onChange={(e) => updateBulletListItem("prevWeekActivities", idx, e.target.value)}
+                        placeholder={`Activity ${idx + 1}`}
+                        aria-label={`Previous week activity ${idx + 1}`}
+                      />
+                      <button
+                        type="button"
+                        className="btn btnSmall btnGhost"
+                        onClick={() => removeBulletListItem("prevWeekActivities", idx)}
+                        disabled={ensureMinOne(slide1.prevWeekActivities).length <= 1}
+                        aria-label={`Remove previous week activity ${idx + 1}`}
+                        title="Remove"
+                      >
+                        −
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                  <span className="label">Key activities planned (current week)</span>
+                  <button type="button" className="btn btnSmall btnSecondary" onClick={() => addBulletListItem("currentWeekActivities")}>
+                    + Add
+                  </button>
+                </div>
+                <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                  {ensureMinOne(slide1.currentWeekActivities).map((b, idx) => (
+                    <div key={`${sfCurrentWeekSeedId}_${idx}`} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
+                      <input
+                        className="input"
+                        value={b}
+                        onChange={(e) => updateBulletListItem("currentWeekActivities", idx, e.target.value)}
+                        placeholder={`Planned activity ${idx + 1}`}
+                        aria-label={`Current week activity ${idx + 1}`}
+                      />
+                      <button
+                        type="button"
+                        className="btn btnSmall btnGhost"
+                        onClick={() => removeBulletListItem("currentWeekActivities", idx)}
+                        disabled={ensureMinOne(slide1.currentWeekActivities).length <= 1}
+                        aria-label={`Remove current week activity ${idx + 1}`}
+                        title="Remove"
+                      >
+                        −
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="helper">
+              Slide preview updates live. Export will place Skill Factory slides after the Global Cover.
             </div>
           </div>
         </div>

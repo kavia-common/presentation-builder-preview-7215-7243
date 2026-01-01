@@ -17,9 +17,17 @@ import {
   revokeLastSlideObjectUrls,
   saveLastSlideToStorage
 } from "./utils/lastSlideModel";
+import {
+  createDefaultSkillFactory,
+  createDefaultSkillFactoryState,
+  loadSkillFactoriesFromStorage,
+  saveSkillFactoriesToStorage,
+  upsertSkillFactory
+} from "./utils/skillFactoryModel";
 
 const GLOBAL_COVER_ID = "__global_cover__";
 const GLOBAL_LAST_ID = "__global_last__";
+const SKILL_FACTORY_SLIDE1_PREFIX = "__skill_factory_slide1__:";
 
 function makeTimestamp(d = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");
@@ -44,6 +52,11 @@ function App() {
   /** Main UI entry point: slide editor + preview + export (frontend-only). */
   const [globalCoverSlide, setGlobalCoverSlide] = useState(() => loadCoverFromStorage() || createDefaultCover());
   const [globalLastSlide, setGlobalLastSlide] = useState(() => loadLastSlideFromStorage() || createDefaultLastSlide());
+
+  const [skillFactoriesState, setSkillFactoriesState] = useState(
+    () => loadSkillFactoriesFromStorage() || createDefaultSkillFactoryState()
+  );
+
   const [slides, setSlides] = useState(() => [createEmptySlide()]);
   const [selectedId, setSelectedId] = useState(() => GLOBAL_COVER_ID);
 
@@ -53,6 +66,19 @@ function App() {
 
   const isCoverSelected = selectedId === GLOBAL_COVER_ID;
   const isLastSelected = selectedId === GLOBAL_LAST_ID;
+  const isSkillFactorySlide1Selected = selectedId?.startsWith(SKILL_FACTORY_SLIDE1_PREFIX);
+
+  const factories = Array.isArray(skillFactoriesState?.factories) ? skillFactoriesState.factories : [];
+
+  const selectedFactoryId = useMemo(() => {
+    if (!isSkillFactorySlide1Selected) return null;
+    return selectedId.slice(SKILL_FACTORY_SLIDE1_PREFIX.length) || null;
+  }, [selectedId, isSkillFactorySlide1Selected]);
+
+  const selectedFactory = useMemo(() => {
+    if (!selectedFactoryId) return null;
+    return factories.find((f) => f.id === selectedFactoryId) || null;
+  }, [factories, selectedFactoryId]);
 
   // Persist cover changes (excluding object URL).
   useEffect(() => {
@@ -64,9 +90,20 @@ function App() {
     saveLastSlideToStorage(globalLastSlide);
   }, [globalLastSlide]);
 
-  // Keep selection valid if slides change (e.g., delete).
+  // Persist skill factory changes.
+  useEffect(() => {
+    saveSkillFactoriesToStorage(skillFactoriesState);
+  }, [skillFactoriesState]);
+
+  // Keep selection valid if slides/factories change (e.g., delete).
   useEffect(() => {
     if (isCoverSelected || isLastSelected) return;
+
+    if (isSkillFactorySlide1Selected) {
+      const ok = selectedFactoryId && factories.some((f) => f.id === selectedFactoryId);
+      if (!ok) setSelectedId(GLOBAL_COVER_ID);
+      return;
+    }
 
     // If selection points to a deleted slide, reset to cover.
     if (slides.length === 0) {
@@ -76,7 +113,15 @@ function App() {
     if (!selectedId || !slides.some((s) => s.id === selectedId)) {
       setSelectedId(GLOBAL_COVER_ID);
     }
-  }, [slides, selectedId, isCoverSelected, isLastSelected]);
+  }, [
+    slides,
+    factories,
+    selectedId,
+    isCoverSelected,
+    isLastSelected,
+    isSkillFactorySlide1Selected,
+    selectedFactoryId
+  ]);
 
   // Cleanup: revoke object URLs on unmount.
   useEffect(() => {
@@ -107,6 +152,32 @@ function App() {
     }
     return "Ready to generate.";
   }, [slides.length, validation]);
+
+  const addSkillFactory = () => {
+    const f = createDefaultSkillFactory();
+    setSkillFactoriesState((prev) => ({
+      factories: [...(Array.isArray(prev?.factories) ? prev.factories : []), f]
+    }));
+    setSelectedId(`${SKILL_FACTORY_SLIDE1_PREFIX}${f.id}`);
+  };
+
+  const deleteSkillFactory = (factoryId) => {
+    setSkillFactoriesState((prev) => ({
+      factories: (Array.isArray(prev?.factories) ? prev.factories : []).filter((f) => f.id !== factoryId)
+    }));
+  };
+
+  const updateSkillFactorySlide1 = (factoryId, slide1Patch) => {
+    setSkillFactoriesState((prev) =>
+      upsertSkillFactory(prev, factoryId, (f) => ({
+        ...f,
+        slides: {
+          ...(f.slides || {}),
+          slide1: { ...(f.slides?.slide1 || {}), ...slide1Patch }
+        }
+      }))
+    );
+  };
 
   const addSlide = () => {
     const newSlide = createEmptySlide();
@@ -161,7 +232,13 @@ function App() {
 
     try {
       // Ensure we await the promise and catch errors reliably.
-      await exportSlidesToPptx({ cover: globalCoverSlide, last: globalLastSlide, slides, fileName });
+      await exportSlidesToPptx({
+        cover: globalCoverSlide,
+        last: globalLastSlide,
+        skillFactories: factories,
+        slides,
+        fileName
+      });
 
       setToast({
         open: true,
@@ -195,7 +272,7 @@ function App() {
   };
 
   const previewProps = useMemo(() => {
-    const totalSlides = slides.length + 2; // cover + normal slides + last
+    const totalSlides = 2 + factories.length + slides.length; // cover + skill factories + normal slides + last
 
     if (isCoverSelected) {
       return {
@@ -219,15 +296,41 @@ function App() {
       };
     }
 
+    if (isSkillFactorySlide1Selected) {
+      const sfIndex = selectedFactoryId ? factories.findIndex((f) => f.id === selectedFactoryId) : -1;
+      return {
+        mode: "skillFactorySlide1",
+        cover: globalCoverSlide,
+        last: globalLastSlide,
+        slide: null,
+        skillFactory: selectedFactory,
+        slideIndex: 1 + Math.max(0, sfIndex), // cover is 0; factories start at 1
+        totalSlides
+      };
+    }
+
+    // Normal slide indices start after cover + all skill factories
     return {
       mode: "slide",
       cover: globalCoverSlide,
       last: globalLastSlide,
       slide: selectedSlide,
-      slideIndex: Math.max(0, selectedIndex) + 1, // +1 because cover is slide 1
+      slideIndex: 1 + factories.length + Math.max(0, selectedIndex),
       totalSlides
     };
-  }, [isCoverSelected, isLastSelected, globalCoverSlide, globalLastSlide, slides.length, selectedSlide, selectedIndex]);
+  }, [
+    isCoverSelected,
+    isLastSelected,
+    isSkillFactorySlide1Selected,
+    globalCoverSlide,
+    globalLastSlide,
+    factories,
+    slides.length,
+    selectedSlide,
+    selectedIndex,
+    selectedFactory,
+    selectedFactoryId
+  ]);
 
   const generateDisabled = !canGenerate || isGenerating;
 
@@ -240,6 +343,7 @@ function App() {
         onClose={() => setIsPreviewOpen(false)}
         cover={globalCoverSlide}
         last={globalLastSlide}
+        skillFactories={factories}
         slides={slides}
         onDownload={onDownloadFromPreview}
         canDownload={canGenerate}
@@ -293,11 +397,13 @@ function App() {
             <SlideList
               globalCover={{ id: GLOBAL_COVER_ID, data: globalCoverSlide }}
               globalLast={{ id: GLOBAL_LAST_ID, data: globalLastSlide }}
-              slides={slides}
+              skillFactories={factories}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onAdd={addSlide}
+              onAddSkillFactory={addSkillFactory}
               onDelete={deleteSlide}
+              onDeleteSkillFactory={deleteSkillFactory}
               onMoveUp={(idx) => moveSlide(idx, idx - 1)}
               onMoveDown={(idx) => moveSlide(idx, idx + 1)}
             />
@@ -306,13 +412,15 @@ function App() {
 
             <div style={{ display: "grid", gap: 16 }}>
               <SlideForm
-                mode={isCoverSelected ? "cover" : isLastSelected ? "last" : "slide"}
-                slide={isCoverSelected || isLastSelected ? null : selectedSlide}
+                mode={isCoverSelected ? "cover" : isLastSelected ? "last" : isSkillFactorySlide1Selected ? "skillFactorySlide1" : "slide"}
+                slide={isCoverSelected || isLastSelected || isSkillFactorySlide1Selected ? null : selectedSlide}
                 cover={globalCoverSlide}
                 last={globalLastSlide}
+                skillFactory={selectedFactory}
                 onChange={updateSelected}
                 onCoverChange={updateCover}
                 onLastChange={setGlobalLastSlide}
+                onSkillFactorySlide1Change={(patch) => selectedFactoryId && updateSkillFactorySlide1(selectedFactoryId, patch)}
               />
 
               <section className="card" aria-label="How to use">

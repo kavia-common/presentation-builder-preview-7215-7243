@@ -9,12 +9,14 @@ function normalizeMultiline(text) {
 }
 
 // PUBLIC_INTERFACE
-export default function SlidePreview({ mode = "slide", cover, last, slide, slideIndex, totalSlides }) {
-  /** Center preview "canvas" for the selected item (Global Cover, Global Last Page, or a regular slide). */
+export default function SlidePreview({ mode = "slide", cover, last, slide, skillFactory, slideIndex, totalSlides }) {
+  /** Center preview "canvas" for the selected item (Global Cover, Global Last Page, Skill Factory Slide 1, or a regular slide). */
   const preset = useMemo(() => {
     const pid = slide?.theme?.backgroundPresetId || "surface";
     return THEME_PRESETS[pid] || THEME_PRESETS.surface;
   }, [slide?.theme?.backgroundPresetId]);
+
+  const sf1 = skillFactory?.slides?.slide1;
 
   // Empty state
   if (mode !== "cover" && mode !== "last" && !slide) {
@@ -139,18 +141,12 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, slide
               {/* Centered lockup */}
               <div className="lastPreviewContent">
                 <div className="lastLockup">
-                  <div
-                    className="lastHeadline"
-                    style={{ color: last?.headlineColor || "#111827" }}
-                  >
+                  <div className="lastHeadline" style={{ color: last?.headlineColor || "#111827" }}>
                     {last?.headline?.trim() ? last.headline : "THANK YOU"}
                   </div>
 
                   {last?.tagline?.trim() ? (
-                    <div
-                      className="lastTagline"
-                      style={{ color: last?.taglineColor || last?.accentColor || "#2563EB" }}
-                    >
+                    <div className="lastTagline" style={{ color: last?.taglineColor || last?.accentColor || "#2563EB" }}>
                       {last.tagline}
                     </div>
                   ) : null}
@@ -191,6 +187,139 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, slide
                 <span className="lastAccentSq" style={{ background: "#F59E0B" }} />
                 <span className="lastAccentSq" style={{ background: "#111827" }} />
                 <span className="lastAccentSq" style={{ background: "rgba(17,24,39,0.25)" }} />
+              </div>
+            </div>
+          </div>
+        ) : mode === "skillFactorySlide1" ? (
+          <div className="sfPreviewFrame" aria-label="Skill Factory Slide 1 preview">
+            <div className="sfPreviewBg">
+              <div className="sfHeader">
+                <div className="sfHeaderLeft">
+                  <div className="sfHeaderTitle">{sf1?.factoryName?.trim() ? sf1.factoryName : "Skill Factory name"}</div>
+                </div>
+                <div className="sfHeaderRight">
+                  <div className="sfHeaderSprint">{sf1?.sprintLabel?.trim() ? sf1.sprintLabel : "Sprint label / date"}</div>
+                </div>
+              </div>
+
+              <div className="sfBody">
+                <div className="sfTopGrid">
+                  <section className="sfPanel">
+                    <div className="sfPanelHeader">
+                      <div className="sfPanelTitle">PROJECT HIGHLIGHTS</div>
+                      <div className="sfPanelBar" aria-hidden="true" />
+                    </div>
+                    <ul className="sfList">
+                      {(sf1?.highlights || []).map((t, idx) =>
+                        (t || "").trim() ? (
+                          <li key={idx} className="sfListItem">
+                            {t}
+                          </li>
+                        ) : null
+                      )}
+                      {((sf1?.highlights || []).map((t) => (t || "").trim()).filter(Boolean).length === 0) ? (
+                        <li className="sfListItem sfListMuted">Add highlights in the editor.</li>
+                      ) : null}
+                    </ul>
+                  </section>
+
+                  <section className="sfPanel">
+                    <div className="sfPanelHeader">
+                      <div className="sfPanelTitle">PROJECT LOWLIGHTS</div>
+                      <div className="sfPanelBar" aria-hidden="true" />
+                    </div>
+                    <ul className="sfList">
+                      {(sf1?.lowlights || []).map((t, idx) =>
+                        (t || "").trim() ? (
+                          <li key={idx} className="sfListItem">
+                            {t}
+                          </li>
+                        ) : null
+                      )}
+                      {((sf1?.lowlights || []).map((t) => (t || "").trim()).filter(Boolean).length === 0) ? (
+                        <li className="sfListItem sfListMuted">Add lowlights in the editor.</li>
+                      ) : null}
+                    </ul>
+                  </section>
+
+                  <section className="sfPanel sfTeamPanel">
+                    <div className="sfPanelHeader">
+                      <div className="sfPanelTitle">TEAM MEMBERS</div>
+                      <div className="sfPanelBar" aria-hidden="true" />
+                    </div>
+
+                    <div className="sfTableWrap">
+                      <table className="sfTable" aria-label="Team members">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(sf1?.teamMembers || []).slice(0, 6).map((m, idx) => (
+                            <tr key={idx}>
+                              <td>{m?.name?.trim() ? m.name : "—"}</td>
+                              <td>{m?.role?.trim() ? m.role : "—"}</td>
+                            </tr>
+                          ))}
+                          {((sf1?.teamMembers || []).length === 0) ? (
+                            <tr>
+                              <td colSpan={2} className="sfTableEmpty">
+                                Add team members in the editor.
+                              </td>
+                            </tr>
+                          ) : null}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                </div>
+
+                <div className="sfBottomGrid">
+                  <section className="sfPanel">
+                    <div className="sfPanelHeader">
+                      <div className="sfPanelTitle">Key Activities completed in previous week</div>
+                      <div className="sfPanelBar" aria-hidden="true" />
+                    </div>
+                    <ul className="sfList">
+                      {(sf1?.prevWeekActivities || []).map((t, idx) =>
+                        (t || "").trim() ? (
+                          <li key={idx} className="sfListItem">
+                            {t}
+                          </li>
+                        ) : null
+                      )}
+                      {((sf1?.prevWeekActivities || []).map((t) => (t || "").trim()).filter(Boolean).length === 0) ? (
+                        <li className="sfListItem sfListMuted">Add previous week activities.</li>
+                      ) : null}
+                    </ul>
+                  </section>
+
+                  <section className="sfPanel">
+                    <div className="sfPanelHeader">
+                      <div className="sfPanelTitle">Key Activities planned for current week</div>
+                      <div className="sfPanelBar" aria-hidden="true" />
+                    </div>
+                    <ul className="sfList">
+                      {(sf1?.currentWeekActivities || []).map((t, idx) =>
+                        (t || "").trim() ? (
+                          <li key={idx} className="sfListItem">
+                            {t}
+                          </li>
+                        ) : null
+                      )}
+                      {((sf1?.currentWeekActivities || []).map((t) => (t || "").trim()).filter(Boolean).length === 0) ? (
+                        <li className="sfListItem sfListMuted">Add current week activities.</li>
+                      ) : null}
+                    </ul>
+                  </section>
+                </div>
+
+                <div className="sfFooter">
+                  <div className="sfFooterLine" aria-hidden="true" />
+                  <div className="sfFooterText">Ocean Professional • Skill Factory</div>
+                </div>
               </div>
             </div>
           </div>

@@ -4,11 +4,14 @@ import React from "react";
 export default function SlideList({
   globalCover,
   globalLast,
+  skillFactories,
   slides,
   selectedId,
   onSelect,
   onAdd,
+  onAddSkillFactory,
   onDelete,
+  onDeleteSkillFactory,
   onMoveUp,
   onMoveDown
 }) {
@@ -16,17 +19,25 @@ export default function SlideList({
   const coverSelected = selectedId === globalCover?.id;
   const lastSelected = selectedId === globalLast?.id;
 
+  const factories = Array.isArray(skillFactories) ? skillFactories : [];
+  const factorySelectedId = selectedId?.startsWith("__skill_factory_slide1__:") ? selectedId.split(":")[1] : null;
+
   return (
     <section className="card" aria-label="Slide list">
       <div className="cardHeader">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <h2 className="cardTitle">Slides</h2>
-          <button className="btn btnSmall btnSecondary" onClick={onAdd} type="button">
-            + Add
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button className="btn btnSmall btnGhost" onClick={onAddSkillFactory} type="button" title="Add Skill Factory group">
+              + Skill Factory
+            </button>
+            <button className="btn btnSmall btnSecondary" onClick={onAdd} type="button">
+              + Add
+            </button>
+          </div>
         </div>
         <p className="cardHint">
-          Global Cover is pinned as slide 1. Global Last Page is pinned as the final slide. Content slides appear between them.
+          Order: Global Cover → Skill Factories → Content slides → Global Last Page. Skill Factory Slide 1 is implemented for now.
         </p>
       </div>
 
@@ -100,6 +111,96 @@ export default function SlideList({
             </div>
           </li>
 
+          {/* Skill Factories (currently: Slide 1 only) */}
+          {factories.length ? (
+            factories.map((f, idx) => {
+              const selected = factorySelectedId === f.id;
+              const slideNumber = 2 + idx; // cover=1; factories start at 2
+              const title = f?.slides?.slide1?.factoryName?.trim() ? f.slides.slide1.factoryName : `Skill Factory ${idx + 1}`;
+              const sprint = f?.slides?.slide1?.sprintLabel?.trim() ? f.slides.slide1.sprintLabel : "Sprint label";
+
+              return (
+                <li
+                  key={f.id}
+                  style={{
+                    border: `1px solid ${selected ? "rgba(37,99,235,0.45)" : "rgba(17,24,39,0.12)"}`,
+                    borderRadius: 14,
+                    padding: 10,
+                    background: selected ? "rgba(37,99,235,0.06)" : "#fff",
+                    boxShadow: selected ? "0 8px 18px rgba(37,99,235,0.10)" : "none"
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onSelect(`__skill_factory_slide1__:${f.id}`)}
+                    className="btn btnGhost"
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: 10,
+                      borderRadius: 12
+                    }}
+                    aria-current={selected ? "true" : "false"}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.03em", textTransform: "uppercase", color: "#1d4ed8" }}>
+                          Skill Factory – Slide 1
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 900,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            marginTop: 2
+                          }}
+                        >
+                          {title}
+                        </div>
+                        <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{sprint}</div>
+                      </div>
+                      <span style={{ fontSize: 12, color: "#6b7280" }}>#{slideNumber}</span>
+                    </div>
+                  </button>
+
+                  <div style={{ display: "flex", gap: 8, justifyContent: "space-between", paddingTop: 8 }}>
+                    <div className="badge" title="Skill Factory group">
+                      Group
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btnSmall btnDanger"
+                      onClick={() => onDeleteSkillFactory?.(f.id)}
+                      aria-label={`Delete Skill Factory ${idx + 1}`}
+                      title="Delete Skill Factory group"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              );
+            })
+          ) : (
+            <li
+              style={{
+                border: "1px dashed rgba(17,24,39,0.20)",
+                borderRadius: 14,
+                padding: 14,
+                background: "rgba(37,99,235,0.04)"
+              }}
+            >
+              <div className="badge">Skill Factory</div>
+              <p style={{ margin: "10px 0 0 0", fontSize: 13, lineHeight: 1.5, color: "#111827" }}>
+                No Skill Factories yet. Click <strong>+ Skill Factory</strong> to insert a new group after the cover.
+              </p>
+              <div className="helper" style={{ marginTop: 8 }}>
+                Skill Factory slides export between <strong>Cover</strong> and <strong>Content slides</strong>.
+              </div>
+            </li>
+          )}
+
           {/* Normal slides */}
           {slides.length === 0 ? (
             <li
@@ -112,7 +213,7 @@ export default function SlideList({
             >
               <div className="badge">Empty state</div>
               <p style={{ margin: "10px 0 0 0", fontSize: 13, lineHeight: 1.5, color: "#111827" }}>
-                No content slides yet. Click <strong>+ Add</strong> to create slide 2.
+                No content slides yet. Click <strong>+ Add</strong> to create your first content slide.
               </p>
               <div className="helper" style={{ marginTop: 8 }}>
                 Export will still include <strong>Global Cover</strong> and <strong>Global Last Page</strong>.
@@ -121,7 +222,7 @@ export default function SlideList({
           ) : (
             slides.map((slide, idx) => {
               const selected = slide.id === selectedId;
-              const slideNumber = idx + 2; // #1 is global cover; last page is not numbered
+              const slideNumber = 2 + factories.length + idx; // cover=1; factories occupy 2..; normal start after
               return (
                 <li
                   key={slide.id}

@@ -847,3 +847,240 @@ a {
   margin-top: 8px;
   font-size: 10px;
 }
+
+/* =========================
+   Skill Factory – Slide 1 (Ocean Pro)
+   Reference: header bar + 3 top panels + 2 bottom panels
+   ========================= */
+.sfPreviewFrame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.10), rgba(249, 250, 251, 1));
+  box-shadow: 0 20px 45px rgba(17, 24, 39, 0.08);
+}
+
+.sfPreviewBg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+}
+
+.sfHeader {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(37, 99, 235, 0.86));
+  color: #fff;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 10px 14px;
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.20);
+}
+
+.sfHeaderTitle {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sfHeaderSprint {
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.98;
+  white-space: nowrap;
+}
+
+.sfBody {
+  position: absolute;
+  top: 74px;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 12px;
+}
+
+.sfTopGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.1fr;
+  gap: 12px;
+  min-height: 0;
+}
+
+.sfBottomGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+
+.sfPanel {
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 12px;
+  background: rgba(249, 250, 251, 0.85);
+  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.06);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sfPanelHeader {
+  padding: 10px 12px 8px 12px;
+  background: #fff;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.10);
+}
+
+.sfPanelTitle {
+  font-size: 11px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.sfPanelBar {
+  margin-top: 6px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.95), rgba(245, 158, 11, 0.85));
+}
+
+.sfList {
+  margin: 0;
+  padding: 10px 14px 12px 26px;
+  display: grid;
+  gap: 6px;
+  overflow: auto;
+}
+
+.sfListItem {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #111827;
+}
+
+.sfListMuted {
+  color: rgba(107, 114, 128, 0.95);
+  font-style: italic;
+  list-style: none;
+  padding-left: 0;
+  margin-left: -12px;
+}
+
+.sfTeamPanel .sfList {
+  padding-left: 14px;
+}
+
+.sfTableWrap {
+  padding: 10px 12px 12px 12px;
+  overflow: auto;
+}
+
+.sfTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.10);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sfTable th,
+.sfTable td {
+  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+  padding: 8px 10px;
+  font-size: 11px;
+  text-align: left;
+  color: #111827;
+}
+
+.sfTable th {
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+  font-weight: 900;
+}
+
+.sfTable tr:last-child td {
+  border-bottom: none;
+}
+
+.sfTableEmpty {
+  color: rgba(107, 114, 128, 0.95);
+  font-style: italic;
+}
+
+.sfFooter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 0 2px;
+}
+
+.sfFooterLine {
+  height: 2px;
+  width: 80px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.35);
+}
+
+.sfFooterText {
+  font-size: 10px;
+  color: rgba(107, 114, 128, 0.95);
+  font-weight: 800;
+}
+
+.sfEditorTable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.sfEditorTable th,
+.sfEditorTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+  vertical-align: top;
+}
+
+.sfEditorTable th {
+  font-size: 12px;
+  text-align: left;
+  font-weight: 900;
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.sfEditorTable tr:last-child td {
+  border-bottom: none;
+}
+
+@media (max-width: 980px) {
+  .sfTopGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .sfHeaderTitle {
+    font-size: 13px;
+  }
+  .sfTopGrid,
+  .sfBottomGrid {
+    grid-template-columns: 1fr;
+  }
+}

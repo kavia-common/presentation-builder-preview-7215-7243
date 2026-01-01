@@ -189,6 +189,346 @@ async function addCoverSlide(pptx, cover) {
   });
 }
 
+function normalizeBullets(arr, max = 8) {
+  return (Array.isArray(arr) ? arr : [])
+    .map((t) => (t || "").toString().trim())
+    .filter(Boolean)
+    .slice(0, max);
+}
+
+function addPanelHeader(slide, { x, y, w, title, primary = "2563EB", accent = "F59E0B" }) {
+  // White header strip
+  slide.addShape(PptxGenJS.ShapeType.rect, {
+    x,
+    y,
+    w,
+    h: 0.45,
+    fill: { color: "FFFFFF" },
+    line: { color: "D1D5DB", width: 0.5 }
+  });
+
+  slide.addText(title, {
+    x: x + 0.18,
+    y: y + 0.12,
+    w: w - 0.36,
+    h: 0.3,
+    fontSize: 11,
+    bold: true,
+    color: "111827"
+  });
+
+  // Accent line
+  slide.addShape(PptxGenJS.ShapeType.rect, {
+    x: x + 0.18,
+    y: y + 0.39,
+    w: Math.max(0, w - 0.36),
+    h: 0.06,
+    fill: { color: primary },
+    line: { color: primary }
+  });
+
+  // Small accent cap
+  slide.addShape(PptxGenJS.ShapeType.rect, {
+    x: x + 0.18,
+    y: y + 0.39,
+    w: Math.max(0.35, (w - 0.36) * 0.22),
+    h: 0.06,
+    fill: { color: accent },
+    line: { color: accent }
+  });
+}
+
+function addPanelContainer(slide, { x, y, w, h }) {
+  slide.addShape(PptxGenJS.ShapeType.roundRect, {
+    x,
+    y,
+    w,
+    h,
+    fill: { color: "F9FAFB" },
+    line: { color: "D1D5DB", width: 0.7 },
+    radius: 0.12
+  });
+}
+
+function addBulletBox(slide, { x, y, w, h, bullets, fontSize = 11 }) {
+  if (!bullets.length) {
+    slide.addText("—", { x: x + 0.2, y: y + 0.12, w: w - 0.4, h: 0.25, fontSize, italic: true, color: "6B7280" });
+    return;
+  }
+
+  slide.addText(bullets.join("\n"), {
+    x: x + 0.2,
+    y: y + 0.1,
+    w: w - 0.4,
+    h: Math.max(0.2, h - 0.2),
+    fontSize,
+    color: "111827",
+    bullet: { indent: 16 },
+    paraSpaceAfter: 4
+  });
+}
+
+function addTeamTable(slide, { x, y, w, h, rows }) {
+  // Simple table (Name | Role)
+  const headerH = 0.38;
+  const rowH = 0.34;
+
+  // Table border background
+  slide.addShape(PptxGenJS.ShapeType.rect, {
+    x,
+    y,
+    w,
+    h,
+    fill: { color: "FFFFFF" },
+    line: { color: "D1D5DB", width: 0.7 }
+  });
+
+  const col1 = w * 0.55;
+  const col2 = w - col1;
+
+  // Header fill
+  slide.addShape(PptxGenJS.ShapeType.rect, {
+    x,
+    y,
+    w,
+    h: headerH,
+    fill: { color: "EAF2FF" },
+    line: { color: "D1D5DB", width: 0.7 }
+  });
+
+  // Header text
+  slide.addText("Name", {
+    x: x + 0.12,
+    y: y + 0.08,
+    w: col1 - 0.24,
+    h: headerH - 0.12,
+    fontSize: 11,
+    bold: true,
+    color: "1D4ED8"
+  });
+  slide.addText("Role", {
+    x: x + col1 + 0.12,
+    y: y + 0.08,
+    w: col2 - 0.24,
+    h: headerH - 0.12,
+    fontSize: 11,
+    bold: true,
+    color: "1D4ED8"
+  });
+
+  // Vertical divider
+  slide.addShape(PptxGenJS.ShapeType.line, {
+    x: x + col1,
+    y,
+    w: 0,
+    h,
+    line: { color: "D1D5DB", width: 0.7 }
+  });
+
+  const safeRows = (Array.isArray(rows) ? rows : []).slice(0, Math.floor((h - headerH) / rowH));
+  const maxRows = Math.max(1, Math.floor((h - headerH) / rowH));
+  const padded = safeRows.length ? safeRows : [{ name: "—", role: "—" }];
+
+  for (let i = 0; i < Math.min(maxRows, padded.length); i++) {
+    const rowY = y + headerH + i * rowH;
+
+    // Row line
+    slide.addShape(PptxGenJS.ShapeType.line, {
+      x,
+      y: rowY,
+      w,
+      h: 0,
+      line: { color: "E5E7EB", width: 0.6 }
+    });
+
+    const name = (padded[i]?.name || "").toString().trim() || "—";
+    const role = (padded[i]?.role || "").toString().trim() || "—";
+
+    slide.addText(name, {
+      x: x + 0.12,
+      y: rowY + 0.06,
+      w: col1 - 0.24,
+      h: rowH - 0.08,
+      fontSize: 11,
+      color: "111827"
+    });
+    slide.addText(role, {
+      x: x + col1 + 0.12,
+      y: rowY + 0.06,
+      w: col2 - 0.24,
+      h: rowH - 0.08,
+      fontSize: 11,
+      color: "111827"
+    });
+  }
+}
+
+async function addSkillFactorySlide1(pptx, factory) {
+  const SLIDE_W = 13.333;
+  const SLIDE_H = 7.5;
+
+  const primary = "2563EB";
+  const accent = "F59E0B";
+
+  const s = pptx.addSlide();
+  s.background = { color: "FFFFFF" };
+
+  const sf1 = factory?.slides?.slide1 || {};
+  const factoryName = (sf1.factoryName || "").trim() || "Skill Factory";
+  const sprintLabel = (sf1.sprintLabel || "").trim() || "Sprint";
+
+  // Header bar
+  const headerX = 0.6;
+  const headerY = 0.5;
+  const headerW = SLIDE_W - 1.2;
+  const headerH = 0.55;
+
+  s.addShape(pptx.ShapeType.roundRect, {
+    x: headerX,
+    y: headerY,
+    w: headerW,
+    h: headerH,
+    fill: { color: primary },
+    line: { color: primary },
+    radius: 0.12
+  });
+
+  s.addText(factoryName, {
+    x: headerX + 0.25,
+    y: headerY + 0.16,
+    w: headerW * 0.72,
+    h: 0.28,
+    fontSize: 14,
+    bold: true,
+    color: "FFFFFF"
+  });
+
+  s.addText(sprintLabel, {
+    x: headerX + headerW * 0.72,
+    y: headerY + 0.16,
+    w: headerW * 0.28 - 0.25,
+    h: 0.28,
+    fontSize: 12,
+    bold: true,
+    color: "FFFFFF",
+    align: "right"
+  });
+
+  // Layout grid (approximate reference)
+  const gap = 0.22;
+  const topY = headerY + headerH + 0.25;
+
+  const topH = 3.3;
+  const bottomH = SLIDE_H - topY - topH - 0.7;
+  const bottomY = topY + topH + 0.3;
+
+  const totalW = SLIDE_W - 1.2;
+  const x0 = 0.6;
+
+  const colW = (totalW - gap * 2) / 3;
+  const col1X = x0;
+  const col2X = x0 + colW + gap;
+  const col3X = x0 + (colW + gap) * 2;
+
+  // Top panels: Highlights, Lowlights, Team Members
+  const panelPadTop = 0.45;
+
+  // Highlights
+  addPanelContainer(s, { x: col1X, y: topY, w: colW, h: topH });
+  addPanelHeader(s, { x: col1X, y: topY, w: colW, title: "PROJECT HIGHLIGHTS", primary, accent });
+  addBulletBox(s, {
+    x: col1X,
+    y: topY + panelPadTop,
+    w: colW,
+    h: topH - panelPadTop,
+    bullets: normalizeBullets(sf1.highlights, 8),
+    fontSize: 11
+  });
+
+  // Lowlights
+  addPanelContainer(s, { x: col2X, y: topY, w: colW, h: topH });
+  addPanelHeader(s, { x: col2X, y: topY, w: colW, title: "PROJECT LOWLIGHTS", primary, accent });
+  addBulletBox(s, {
+    x: col2X,
+    y: topY + panelPadTop,
+    w: colW,
+    h: topH - panelPadTop,
+    bullets: normalizeBullets(sf1.lowlights, 8),
+    fontSize: 11
+  });
+
+  // Team Members
+  addPanelContainer(s, { x: col3X, y: topY, w: colW, h: topH });
+  addPanelHeader(s, { x: col3X, y: topY, w: colW, title: "TEAM MEMBERS", primary, accent });
+
+  addTeamTable(s, {
+    x: col3X + 0.18,
+    y: topY + panelPadTop + 0.08,
+    w: colW - 0.36,
+    h: topH - panelPadTop - 0.18,
+    rows: Array.isArray(sf1.teamMembers) ? sf1.teamMembers : []
+  });
+
+  // Bottom panels (two columns)
+  const bottomColW = (totalW - gap) / 2;
+  const b1X = x0;
+  const b2X = x0 + bottomColW + gap;
+
+  addPanelContainer(s, { x: b1X, y: bottomY, w: bottomColW, h: bottomH });
+  addPanelHeader(s, {
+    x: b1X,
+    y: bottomY,
+    w: bottomColW,
+    title: "Key Activities completed in previous week",
+    primary,
+    accent
+  });
+  addBulletBox(s, {
+    x: b1X,
+    y: bottomY + panelPadTop,
+    w: bottomColW,
+    h: bottomH - panelPadTop,
+    bullets: normalizeBullets(sf1.prevWeekActivities, 10),
+    fontSize: 11
+  });
+
+  addPanelContainer(s, { x: b2X, y: bottomY, w: bottomColW, h: bottomH });
+  addPanelHeader(s, {
+    x: b2X,
+    y: bottomY,
+    w: bottomColW,
+    title: "Key Activities planned for current week",
+    primary,
+    accent
+  });
+  addBulletBox(s, {
+    x: b2X,
+    y: bottomY + panelPadTop,
+    w: bottomColW,
+    h: bottomH - panelPadTop,
+    bullets: normalizeBullets(sf1.currentWeekActivities, 10),
+    fontSize: 11
+  });
+
+  // Footer micro line (optional; subtle)
+  s.addShape(pptx.ShapeType.line, {
+    x: SLIDE_W - 2.2,
+    y: SLIDE_H - 0.45,
+    w: 1.2,
+    h: 0,
+    line: { color: "93C5FD", width: 2 }
+  });
+  s.addText("Ocean Professional • Skill Factory", {
+    x: SLIDE_W - 4.3,
+    y: SLIDE_H - 0.55,
+    w: 4.0,
+    h: 0.25,
+    fontSize: 9,
+    color: "6B7280",
+    align: "right"
+  });
+}
+
 async function addLastSlide(pptx, last) {
   // 13.333 x 7.5 inches for LAYOUT_WIDE
   const SLIDE_W = 13.333;
@@ -311,38 +651,45 @@ async function addLastSlide(pptx, last) {
 }
 
 // PUBLIC_INTERFACE
-export async function exportSlidesToPptx({ cover, last, slides, fileName }) {
+export async function exportSlidesToPptx({ cover, last, skillFactories, slides, fileName }) {
   /**
    * Generate a PPTX file from slide data and trigger download (client-side).
    * Notes:
    * - Compatible with pptxgenjs@3.11.0 (CRA-friendly); no node:* imports.
    * - Always includes Global Cover as slide 1.
    * - Always appends Global Last Page as the final slide.
-   * - Supports zero normal slides (exports a 2-slide deck: Cover + Last).
+   * - Skill Factory slides (currently Slide 1 only) are inserted between Cover and normal content slides.
+   * - Supports zero normal slides (exports at least Cover + Last; and any skill factories if present).
    *
-   * @param {{cover: Object, last: Object, slides: Array, fileName?: string}} payload - cover + slides + last.
+   * @param {{cover: Object, last: Object, skillFactories?: Array, slides: Array, fileName?: string}} payload
    * @returns {Promise<void>}
    */
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
   pptx.author = "PPT Generator (Frontend-only)";
 
-  // 13.333 x 7.5 inches for LAYOUT_WIDE
-  const SLIDE_W = 13.333;
-  const SLIDE_H = 7.5;
-
-  // Margins and layout regions
-  const M = 0.6;
-  const leftW = 8.4;
-  const rightW = SLIDE_W - (M * 2 + leftW);
-  const topY = 0.8;
-
   // Slide 1: Global Cover (always)
   await addCoverSlide(pptx, cover);
 
-  // Content slides (0..n)
+  // Skill Factory Slide 1s
+  const safeFactories = Array.isArray(skillFactories) ? skillFactories : [];
+  for (const f of safeFactories) {
+    await addSkillFactorySlide1(pptx, f);
+  }
+
+  // Normal content slides (0..n)
   const safeSlides = Array.isArray(slides) ? slides : [];
   for (const slideData of safeSlides) {
+    // 13.333 x 7.5 inches for LAYOUT_WIDE
+    const SLIDE_W = 13.333;
+    const SLIDE_H = 7.5;
+
+    // Margins and layout regions
+    const M = 0.6;
+    const leftW = 8.4;
+    const rightW = SLIDE_W - (M * 2 + leftW);
+    const topY = 0.8;
+
     const s = pptx.addSlide();
 
     const preset = THEME_PRESETS[slideData.theme?.backgroundPresetId] || THEME_PRESETS.surface;
@@ -434,9 +781,6 @@ export async function exportSlidesToPptx({ cover, last, slides, fileName }) {
   // Final slide: Global Last Page (always)
   await addLastSlide(pptx, last);
 
-  const derived =
-    fileName ||
-    `${safeFileBaseName(cover?.title) || "Presentation"}_${timestampForFileName()}.pptx`;
-
+  const derived = fileName || `${safeFileBaseName(cover?.title) || "Presentation"}_${timestampForFileName()}.pptx`;
   await pptx.writeFile({ fileName: derived });
 }

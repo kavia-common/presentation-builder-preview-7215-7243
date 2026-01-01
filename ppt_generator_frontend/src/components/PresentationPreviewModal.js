@@ -15,6 +15,7 @@ export default function PresentationPreviewModal({
   onClose,
   cover,
   last,
+  skillFactories,
   slides,
   onDownload,
   canDownload,
@@ -22,7 +23,7 @@ export default function PresentationPreviewModal({
   fileNameHint
 }) {
   /** Modal that previews the entire presentation and provides download/export actions. */
-  const [activeIndex, setActiveIndex] = useState(0); // 0 = cover, 1..n = slides, last = final
+  const [activeIndex, setActiveIndex] = useState(0); // 0 = cover, ... last = final
   const [zoomMode, setZoomMode] = useState("fit"); // "fit" | "100" | "125" | "150"
   const [fitScale, setFitScale] = useState(1);
 
@@ -32,13 +33,15 @@ export default function PresentationPreviewModal({
   const activeThumbRef = useRef(null);
 
   const deck = useMemo(() => {
+    const safeFactories = Array.isArray(skillFactories) ? skillFactories : [];
     const safeSlides = Array.isArray(slides) ? slides : [];
     return [
       { id: "__cover__", kind: "cover", data: cover },
+      ...safeFactories.map((f) => ({ id: `__sf1__${f.id}`, kind: "skillFactorySlide1", data: f })),
       ...safeSlides.map((s) => ({ id: s.id, kind: "slide", data: s })),
       { id: "__last__", kind: "last", data: last }
     ];
-  }, [cover, last, slides]);
+  }, [cover, last, slides, skillFactories]);
 
   const total = deck.length;
 
@@ -170,7 +173,13 @@ export default function PresentationPreviewModal({
             <div className="ppTitle">Presentation preview</div>
             <div className="ppSubTitle">
               Slide {activeIndex + 1} of {total} •{" "}
-              {active?.kind === "cover" ? "Global Cover" : active?.kind === "last" ? "Global Last Page" : "Content slide"}
+              {active?.kind === "cover"
+                ? "Global Cover"
+                : active?.kind === "last"
+                  ? "Global Last Page"
+                  : active?.kind === "skillFactorySlide1"
+                    ? "Skill Factory – Slide 1"
+                    : "Content slide"}
             </div>
           </div>
 
@@ -233,7 +242,15 @@ export default function PresentationPreviewModal({
             <div className="ppThumbsList" ref={stripRef}>
               {deck.map((item, idx) => {
                 const selected = idx === activeIndex;
-                const label = item.kind === "cover" ? "Cover" : item.kind === "last" ? "Last" : `Slide ${idx + 1}`;
+                const label =
+                  item.kind === "cover"
+                    ? "Cover"
+                    : item.kind === "last"
+                      ? "Last"
+                      : item.kind === "skillFactorySlide1"
+                        ? "Skill Factory – Slide 1"
+                        : `Slide ${idx + 1}`;
+
                 return (
                   <button
                     key={item.id}
@@ -278,10 +295,13 @@ export default function PresentationPreviewModal({
                 {/* We reuse the existing SlidePreview component as the slide renderer. */}
                 <div className="ppSlideCard">
                   <SlidePreview
-                    mode={active.kind === "cover" ? "cover" : active.kind === "last" ? "last" : "slide"}
+                    mode={
+                      active.kind === "cover" ? "cover" : active.kind === "last" ? "last" : active.kind === "skillFactorySlide1" ? "skillFactorySlide1" : "slide"
+                    }
                     cover={cover}
                     last={last}
                     slide={active.kind === "slide" ? active.data : null}
+                    skillFactory={active.kind === "skillFactorySlide1" ? active.data : null}
                     slideIndex={activeIndex}
                     totalSlides={total}
                   />
