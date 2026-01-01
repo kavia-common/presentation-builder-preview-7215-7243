@@ -27,6 +27,36 @@ export const DEFAULT_SKILL_FACTORY = {
     // Slide 2 is image-only metrics (PNG/JPG). Stored as object URLs for preview/export.
     slide2: {
       metricsImages: []
+    },
+    /**
+     * Slide 3: tabular "Continuous Assessment - RMG" style slide.
+     * Based on reference: a title line, a wide table, and a bottom blue band.
+     */
+    slide3: {
+      title: "Data Engineering : Continuous Assessment - RMG",
+      columns: ["Domain", "Sub domain", "Capability", "Talent Pipeline", "Status", "Total Resource Count"],
+      rows: [
+        {
+          domain: "RMG",
+          subDomain: "RMG",
+          capability: "Skills / Competency",
+          talentPipeline:
+            "Talent pipeline is mapped against the capability and current sprint planned to have new candidates screened.",
+          status: "Active",
+          totalResourceCount: "15"
+        },
+        {
+          domain: "RMG",
+          subDomain: "RMG",
+          capability: "Learning / Training",
+          talentPipeline:
+            "Training pipeline is planned for new joiners; skills uplift mapped to sprint cadence and role expectations.",
+          status: "Active",
+          totalResourceCount: "15"
+        }
+      ],
+      // Visuals
+      bottomBandColor: "#2F78A8"
     }
   }
 };
@@ -50,6 +80,12 @@ export function createDefaultSkillFactory() {
       },
       slide2: {
         metricsImages: []
+      },
+      slide3: {
+        title: DEFAULT_SKILL_FACTORY.slides.slide3.title,
+        columns: [...DEFAULT_SKILL_FACTORY.slides.slide3.columns],
+        rows: DEFAULT_SKILL_FACTORY.slides.slide3.rows.map((r) => ({ ...r })),
+        bottomBandColor: DEFAULT_SKILL_FACTORY.slides.slide3.bottomBandColor
       }
     }
   };
@@ -106,6 +142,25 @@ export function loadSkillFactoriesFromStorage() {
                   height: Number(img?.height) || 0
                 }))
               : base.slides.slide2.metricsImages
+          },
+          slide3: {
+            ...base.slides.slide3,
+            ...(f?.slides?.slide3 || {}),
+            title: (f?.slides?.slide3?.title || base.slides.slide3.title || "").toString(),
+            bottomBandColor: (f?.slides?.slide3?.bottomBandColor || base.slides.slide3.bottomBandColor || "#2F78A8").toString(),
+            columns: Array.isArray(f?.slides?.slide3?.columns)
+              ? f.slides.slide3.columns.map((c) => (c || "").toString())
+              : base.slides.slide3.columns,
+            rows: Array.isArray(f?.slides?.slide3?.rows)
+              ? f.slides.slide3.rows.map((r) => ({
+                  domain: (r?.domain || "").toString(),
+                  subDomain: (r?.subDomain || "").toString(),
+                  capability: (r?.capability || "").toString(),
+                  talentPipeline: (r?.talentPipeline || "").toString(),
+                  status: (r?.status || "").toString(),
+                  totalResourceCount: (r?.totalResourceCount || "").toString()
+                }))
+              : base.slides.slide3.rows
           }
         }
       };

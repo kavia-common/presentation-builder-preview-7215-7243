@@ -21,10 +21,6 @@ export default function SlideList({
 
   const factories = Array.isArray(skillFactories) ? skillFactories : [];
   const safeSlides = Array.isArray(slides) ? slides : [];
-  const factorySelectedId =
-    selectedId?.startsWith("__skill_factory_slide1__:") || selectedId?.startsWith("__skill_factory_slide2__:")
-      ? selectedId.split(":")[1]
-      : null;
 
   return (
     <section className="card" aria-label="Slide list">
@@ -41,7 +37,7 @@ export default function SlideList({
           </div>
         </div>
         <p className="cardHint">
-          Order: Global Cover → Skill Factory Slide 1 → Skill Factory Slide 2 → Content slides → Global Last Page.
+          Order: Global Cover → Skill Factory Slide 1 → Skill Factory Slide 2 → Skill Factory Slide 3 → Content slides → Global Last Page.
         </p>
       </div>
 
@@ -73,7 +69,7 @@ export default function SlideList({
             </div>
           </li>
 
-          {/* Skill Factories (Slide 1 + Slide 2 per factory) */}
+          {/* Skill Factories (Slide 1 + Slide 2 + Slide 3 per factory) */}
           {factories.length ? (
             factories.flatMap((f, idx) => {
               const title = f?.slides?.slide1?.factoryName?.trim() ? f.slides.slide1.factoryName : `Skill Factory ${idx + 1}`;
@@ -81,10 +77,13 @@ export default function SlideList({
 
               const sf1Id = `__skill_factory_slide1__:${f.id}`;
               const sf2Id = `__skill_factory_slide2__:${f.id}`;
+              const sf3Id = `__skill_factory_slide3__:${f.id}`;
 
-              const baseSlideNo = 2 + idx * 2; // cover=1; sf1 starts at 2, each factory adds 2 slides
+              // cover=1; sf1 starts at 2; each factory adds 3 slides.
+              const baseSlideNo = 2 + idx * 3;
               const sf1Selected = selectedId === sf1Id;
               const sf2Selected = selectedId === sf2Id;
+              const sf3Selected = selectedId === sf3Id;
 
               return [
                 (
@@ -143,6 +142,29 @@ export default function SlideList({
                       <div className="kbdHint">Upload PNG/JPG</div>
                     </div>
                   </li>
+                ),
+                (
+                  <li key={`${f.id}__sf3`} className={`slItem ${sf3Selected ? "slItemActive" : ""}`}>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(sf3Id)}
+                      className="btn btnGhost slItemButton"
+                      aria-current={sf3Selected ? "true" : "false"}
+                    >
+                      <div className="slMetaTop">
+                        <div style={{ minWidth: 0 }}>
+                          <div className="slKicker">Skill Factory – Slide 3</div>
+                          <div className="slTitle">Continuous Assessment (table)</div>
+                          <div className="slSub">{title}</div>
+                        </div>
+                        <span className="slIndex">#{baseSlideNo + 2}</span>
+                      </div>
+                    </button>
+
+                    <div className="slItemFooter">
+                      <div className="kbdHint">Table</div>
+                    </div>
+                  </li>
                 )
               ];
             })
@@ -170,21 +192,21 @@ export default function SlideList({
               </div>
             </li>
           ) : (
-            safeSlides.map((slide, idx) => {
-              const selected = slide.id === selectedId;
-              const slideNumber = 2 + factories.length * 2 + idx; // cover=1; factories occupy 2 slides each
+            safeSlides.map((s, idx) => {
+              const selected = s.id === selectedId;
+              const slideNumber = 2 + factories.length * 3 + idx; // cover=1; factories occupy 3 slides each
               return (
-                <li key={slide.id} className={`slItem ${selected ? "slItemActive" : ""}`}>
+                <li key={s.id} className={`slItem ${selected ? "slItemActive" : ""}`}>
                   <button
                     type="button"
-                    onClick={() => onSelect(slide.id)}
+                    onClick={() => onSelect(s.id)}
                     className="btn btnGhost slItemButton"
                     aria-current={selected ? "true" : "false"}
                   >
                     <div className="slMetaTop">
                       <div style={{ minWidth: 0 }}>
-                        <div className="slTitle">{slide.title?.trim() ? slide.title : `Untitled slide ${slideNumber}`}</div>
-                        <div className="slSub">{slide.subtitle?.trim() ? slide.subtitle : "No subtitle"}</div>
+                        <div className="slTitle">{s.title?.trim() ? s.title : `Untitled slide ${slideNumber}`}</div>
+                        <div className="slSub">{s.subtitle?.trim() ? s.subtitle : "No subtitle"}</div>
                       </div>
                       <span className="slIndex">#{slideNumber}</span>
                     </div>
@@ -217,7 +239,7 @@ export default function SlideList({
                     <button
                       type="button"
                       className="btn btnSmall btnDanger"
-                      onClick={() => onDelete(slide.id)}
+                      onClick={() => onDelete(s.id)}
                       aria-label={`Delete slide ${slideNumber}`}
                       title="Delete slide"
                     >

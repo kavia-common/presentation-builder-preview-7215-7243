@@ -18,6 +18,7 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
 
   const sf1 = skillFactory?.slides?.slide1;
   const sf2 = skillFactory?.slides?.slide2;
+  const sf3 = skillFactory?.slides?.slide3;
 
   // Empty state:
   // - Normal slides require `slide`
@@ -349,6 +350,71 @@ export default function SlidePreview({ mode = "slide", cover, last, slide, skill
               </div>
 
               <div className="sf2BottomBand" aria-hidden="true" />
+            </div>
+          </div>
+        ) : mode === "skillFactorySlide3" ? (
+          <div className="sf3PreviewFrame" aria-label="Skill Factory Slide 3 preview">
+            <div className="sf3PreviewBg">
+              <div className="sf3TitleRow">
+                <div className="sf3TitleText">{sf3?.title?.trim() ? sf3.title : "Continuous Assessment"}</div>
+              </div>
+
+              <div className="sf3TableWrap">
+                <div className="sf3TableCard">
+                  <div className="sf3TableHeaderBand" aria-hidden="true" />
+                  <div className="sf3TableInner" role="table" aria-label="Continuous assessment table">
+                    <div className="sf3TableHead" role="rowgroup">
+                      <div className="sf3Row sf3RowHead" role="row">
+                        {(Array.isArray(sf3?.columns) ? sf3.columns : []).map((c, idx) => (
+                          <div key={idx} className="sf3Cell sf3CellHead" role="columnheader">
+                            {(c || "").trim() || `Column ${idx + 1}`}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="sf3TableBody" role="rowgroup">
+                      {(Array.isArray(sf3?.rows) ? sf3.rows : []).length ? (
+                        (sf3.rows || []).slice(0, 6).map((r, idx) => (
+                          <div key={idx} className="sf3Row" role="row">
+                            <div className="sf3Cell" role="cell">
+                              {r?.domain?.trim?.() ? r.domain : "—"}
+                            </div>
+                            <div className="sf3Cell" role="cell">
+                              {r?.subDomain?.trim?.() ? r.subDomain : "—"}
+                            </div>
+                            <div className="sf3Cell" role="cell">
+                              {r?.capability?.trim?.() ? r.capability : "—"}
+                            </div>
+                            <div className="sf3Cell sf3CellWrap" role="cell">
+                              {r?.talentPipeline?.trim?.() ? r.talentPipeline : "—"}
+                            </div>
+                            <div className="sf3Cell" role="cell">
+                              {r?.status?.trim?.() ? r.status : "—"}
+                            </div>
+                            <div className="sf3Cell" role="cell">
+                              {r?.totalResourceCount?.trim?.() ? r.totalResourceCount : "—"}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="sf3Empty">
+                          <div className="badge">Table</div>
+                          <div style={{ marginTop: 8, fontSize: 12, color: "rgba(17,24,39,0.65)", lineHeight: 1.4 }}>
+                            Add rows in the editor to populate Slide 3.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="sf3BottomBand"
+                aria-hidden="true"
+                style={{ background: (sf3?.bottomBandColor || "#2F78A8").toString() }}
+              />
             </div>
           </div>
         ) : (

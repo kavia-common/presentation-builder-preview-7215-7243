@@ -86,9 +86,10 @@ export default function SlideForm({
   onLastChange,
   skillFactory,
   onSkillFactorySlide1Change,
-  onSkillFactorySlide2Change
+  onSkillFactorySlide2Change,
+  onSkillFactorySlide3Change
 }) {
-  /** Form used to edit the currently selected slide OR pinned Global Cover OR pinned Global Last Page OR Skill Factory Slide 1/2. */
+  /** Form used to edit the currently selected slide OR pinned Global Cover OR pinned Global Last Page OR Skill Factory Slide 1/2/3. */
 
   const titleId = useId();
   const subtitleId = useId();
@@ -113,6 +114,12 @@ export default function SlideForm({
   // Skill Factory Slide 2 editor ids/refs MUST be defined unconditionally (rules-of-hooks).
   const sf2UploadId = useId();
   const sf2FileInputRef = useRef(null);
+
+  // Skill Factory Slide 3 editor ids MUST be defined unconditionally (rules-of-hooks).
+  const sf3TitleId = useId();
+  const sf3BandColorId = useId();
+  const sf3ColSeedId = useId();
+  const sf3RowSeedId = useId();
 
   const preset = useMemo(() => {
     const pid = slide?.theme?.backgroundPresetId || "surface";
@@ -289,18 +296,12 @@ export default function SlideForm({
                     <div className="coverUploadPreview">
                       <img
                         src={cover.backgroundImage.objectUrl}
-                        alt={
-                          cover.backgroundImage.fileName ? `Cover background: ${cover.backgroundImage.fileName}` : "Cover background"
-                        }
+                        alt={cover.backgroundImage.fileName ? `Cover background: ${cover.backgroundImage.fileName}` : "Cover background"}
                         className="coverUploadPreviewImg"
                       />
                     </div>
                   ) : (
-                    <EmptyState
-                      badge="Optional"
-                      title="No background image"
-                      description="Add a background photo if you want a hero-style cover."
-                    />
+                    <EmptyState badge="Optional" title="No background image" description="Add a background photo if you want a hero-style cover." />
                   )}
                 </div>
               </div>
@@ -622,17 +623,10 @@ export default function SlideForm({
       update({ teamMembers: next.length ? next : [{ name: "", role: "" }] });
     };
 
+    // IMPORTANT: Section header is a <button>, so `actions` must not contain <button>.
+    // Use non-button content here to avoid validateDOMNesting warnings in tests.
     const BulletInputs = ({ title, hint, listKey, seedId, defaultOpen = true }) => (
-      <Section
-        title={title}
-        hint={hint}
-        defaultOpen={defaultOpen}
-        actions={
-          <button type="button" className="btn btnSmall btnGhost" onClick={() => addBulletListItem(listKey)}>
-            Add
-          </button>
-        }
-      >
+      <Section title={title} hint={hint} defaultOpen={defaultOpen} actions={<span className="kbdHint">Use “Add” below</span>}>
         <div className="formList">
           {ensureMinOne(slide1[listKey]).map((b, idx) => (
             <div key={`${seedId}_${idx}`} className="formListRow">
@@ -655,6 +649,9 @@ export default function SlideForm({
               </button>
             </div>
           ))}
+          <button type="button" className="btn btnSmall btnGhost" onClick={() => addBulletListItem(listKey)}>
+            + Add item
+          </button>
           <div className="helper">Tip: leave an item empty to omit it from export.</div>
         </div>
       </Section>
@@ -699,13 +696,7 @@ export default function SlideForm({
               </div>
             </Section>
 
-            <BulletInputs
-              title="Project highlights"
-              hint="Key wins and progress for the sprint."
-              listKey="highlights"
-              seedId={sfHighlightsSeedId}
-              defaultOpen
-            />
+            <BulletInputs title="Project highlights" hint="Key wins and progress for the sprint." listKey="highlights" seedId={sfHighlightsSeedId} defaultOpen />
 
             <BulletInputs
               title="Project lowlights"
@@ -719,11 +710,7 @@ export default function SlideForm({
               title="Team members"
               hint="Shown as a table on Slide 1."
               defaultOpen={false}
-              actions={
-                <button type="button" className="btn btnSmall btnGhost" onClick={addTeamMember}>
-                  Add row
-                </button>
-              }
+              actions={<span className="kbdHint">Add rows below</span>}
             >
               <div style={{ overflowX: "auto" }}>
                 <table className="sfEditorTable" aria-label="Team members table">
@@ -770,6 +757,12 @@ export default function SlideForm({
                     ))}
                   </tbody>
                 </table>
+
+                <div style={{ marginTop: 10 }}>
+                  <button type="button" className="btn btnSmall btnGhost" onClick={addTeamMember}>
+                    + Add row
+                  </button>
+                </div>
 
                 <div className="helper">Tip: keep 3–6 rows for best slide density.</div>
               </div>
@@ -819,11 +812,7 @@ export default function SlideForm({
                       <div className="formInlineTitle">Planned (current week)</div>
                       <div className="formInlineHint">What’s planned next.</div>
                     </div>
-                    <button
-                      type="button"
-                      className="btn btnSmall btnGhost"
-                      onClick={() => addBulletListItem("currentWeekActivities")}
-                    >
+                    <button type="button" className="btn btnSmall btnGhost" onClick={() => addBulletListItem("currentWeekActivities")}>
                       Add
                     </button>
                   </div>
@@ -984,13 +973,7 @@ export default function SlideForm({
               title="Upload"
               hint="Local-only: used for preview and PPT export."
               defaultOpen
-              actions={
-                metrics.length ? (
-                  <button type="button" className="btn btnSmall btnGhost" onClick={clearAll}>
-                    Clear all
-                  </button>
-                ) : null
-              }
+              actions={<span className="kbdHint">Use file picker</span>}
             >
               <div className="row">
                 <div>
@@ -1011,22 +994,18 @@ export default function SlideForm({
                     Tip: Drag a tile to a new position (drag-anywhere). Export mirrors this order (first 3 use the main Slide 2 placement).
                   </div>
 
-                  {!metrics.length ? (
-                    <EmptyState
-                      badge="Required"
-                      title="No metrics images"
-                      description="Upload one or more screenshots to populate Skill Factory Slide 2."
-                    />
-                  ) : null}
+                  {metrics.length ? (
+                    <button type="button" className="btn btnSmall btnGhost" onClick={clearAll} style={{ marginTop: 10 }}>
+                      Clear all
+                    </button>
+                  ) : (
+                    <EmptyState badge="Required" title="No metrics images" description="Upload one or more screenshots to populate Skill Factory Slide 2." />
+                  )}
                 </div>
               </div>
             </Section>
 
-            <Section
-              title="Images"
-              hint={metrics.length ? "Hover a tile to reveal actions." : "Add images to preview and reorder."}
-              defaultOpen={!!metrics.length}
-            >
+            <Section title="Images" hint={metrics.length ? "Hover a tile to reveal actions." : "Add images to preview and reorder."} defaultOpen={!!metrics.length}>
               {metrics.length ? (
                 <div className="sf2MasonryWrap" aria-label="Uploaded metrics images">
                   <MasonryDnD
@@ -1061,12 +1040,7 @@ export default function SlideForm({
 
                         <div className="sf2TileImgWrap">
                           {m?.objectUrl ? (
-                            <img
-                              className="sf2TileImg"
-                              src={m.objectUrl}
-                              alt={m.fileName ? `Metrics: ${m.fileName}` : "Metrics"}
-                              draggable={false}
-                            />
+                            <img className="sf2TileImg" src={m.objectUrl} alt={m.fileName ? `Metrics: ${m.fileName}` : "Metrics"} draggable={false} />
                           ) : (
                             <div className="sf2TilePlaceholder">
                               <div className="badge">Loading</div>
@@ -1081,6 +1055,249 @@ export default function SlideForm({
               ) : null}
 
               <div className="helper">Slide preview updates live. Export will insert Skill Factory Slide 2 directly after Skill Factory Slide 1.</div>
+            </Section>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ---- Skill Factory Slide 3 editor (table) ----
+  if (mode === "skillFactorySlide3") {
+    const slide3 = skillFactory?.slides?.slide3;
+
+    if (!slide3) {
+      return (
+        <section className="card" aria-label="Skill Factory Slide 3 editor">
+          <div className="cardHeader">
+            <h2 className="cardTitle">Skill Factory – Slide 3</h2>
+            <p className="cardHint">Skill Factory data not available.</p>
+          </div>
+          <div className="cardBody">
+            <div className="helper helperError">Unable to load Skill Factory Slide 3 state.</div>
+          </div>
+        </section>
+      );
+    }
+
+    const update = (patch) => onSkillFactorySlide3Change?.({ ...slide3, ...patch });
+
+    const cols = Array.isArray(slide3.columns) ? slide3.columns : [];
+    const rows = Array.isArray(slide3.rows) ? slide3.rows : [];
+
+    const ensureCols = () => (cols.length ? cols : ["Domain", "Sub domain", "Capability", "Talent Pipeline", "Status", "Total Resource Count"]);
+
+    const addColumn = () => update({ columns: [...ensureCols(), "New column"] });
+
+    const removeColumn = (idx) => {
+      const next = [...ensureCols()];
+      if (next.length <= 1) return;
+      next.splice(idx, 1);
+      update({ columns: next });
+    };
+
+    const updateColumn = (idx, val) => {
+      const next = [...ensureCols()];
+      next[idx] = val;
+      update({ columns: next });
+    };
+
+    const addRow = () =>
+      update({
+        rows: [...rows, { domain: "", subDomain: "", capability: "", talentPipeline: "", status: "", totalResourceCount: "" }]
+      });
+
+    const removeRow = (idx) => {
+      const next = [...rows];
+      next.splice(idx, 1);
+      update({ rows: next });
+    };
+
+    const updateRow = (idx, patch) => {
+      const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
+      update({ rows: next });
+    };
+
+    return (
+      <section className="card" aria-label="Skill Factory Slide 3 editor">
+        <div className="cardHeader">
+          <h2 className="cardTitle">Skill Factory – Slide 3</h2>
+          <p className="cardHint">Tabular status slide (matches the reference: title + table + bottom band).</p>
+        </div>
+
+        <div className="cardBody">
+          <div className="formStack">
+            <Section title="Header" hint="Main title shown above the table." defaultOpen>
+              <div className="row">
+                <div>
+                  <label className="label" htmlFor={sf3TitleId}>
+                    Title
+                  </label>
+                  <input
+                    id={sf3TitleId}
+                    className="input"
+                    value={slide3.title || ""}
+                    onChange={(e) => update({ title: e.target.value })}
+                    placeholder="e.g., Data Engineering : Continuous Assessment - RMG"
+                  />
+                </div>
+
+                <div>
+                  <label className="label" htmlFor={sf3BandColorId}>
+                    Bottom band color
+                  </label>
+                  <input
+                    id={sf3BandColorId}
+                    className="input"
+                    type="color"
+                    value={(slide3.bottomBandColor || "#2F78A8").toString()}
+                    onChange={(e) => update({ bottomBandColor: e.target.value })}
+                    aria-label="Bottom band color"
+                    style={{ padding: 6, height: 42 }}
+                  />
+                </div>
+              </div>
+            </Section>
+
+            <Section
+              title="Columns"
+              hint="Keep these short; they map to the table header."
+              defaultOpen={false}
+              actions={<span className="kbdHint">Edit below</span>}
+            >
+              <div className="formList">
+                {ensureCols().map((c, idx) => (
+                  <div key={`${sf3ColSeedId}_${idx}`} className="formListRow">
+                    <input
+                      className="input"
+                      value={c}
+                      onChange={(e) => updateColumn(idx, e.target.value)}
+                      placeholder={`Column ${idx + 1}`}
+                      aria-label={`Column ${idx + 1}`}
+                    />
+                    <button
+                      type="button"
+                      className="btn btnSmall btnGhost formRowAction"
+                      onClick={() => removeColumn(idx)}
+                      disabled={ensureCols().length <= 1}
+                      aria-label={`Remove column ${idx + 1}`}
+                      title="Remove"
+                    >
+                      −
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn btnSmall btnGhost" onClick={addColumn}>
+                  + Add column
+                </button>
+              </div>
+              <div className="helper">Export uses the same order. Standard layout expects 6 columns like the reference.</div>
+            </Section>
+
+            <Section title="Rows" hint="Add 1–4 rows for best density. Long text wraps in Talent Pipeline." defaultOpen actions={<span className="kbdHint">Edit below</span>}>
+              {!rows.length ? <EmptyState badge="Optional" title="No rows" description="Add at least one row to populate the table." /> : null}
+
+              {rows.length ? (
+                <div style={{ overflowX: "auto" }}>
+                  <table className="sf3EditorTable" aria-label="Slide 3 table rows">
+                    <thead>
+                      <tr>
+                        <th style={{ minWidth: 120 }}>Domain</th>
+                        <th style={{ minWidth: 140 }}>Sub domain</th>
+                        <th style={{ minWidth: 180 }}>Capability</th>
+                        <th style={{ minWidth: 360 }}>Talent Pipeline</th>
+                        <th style={{ minWidth: 120 }}>Status</th>
+                        <th style={{ minWidth: 170 }}>Total Resource Count</th>
+                        <th aria-label="Actions" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, idx) => (
+                        <tr key={`${sf3RowSeedId}_${idx}`} className="sfRow">
+                          <td>
+                            <input
+                              className="input"
+                              value={r?.domain || ""}
+                              onChange={(e) => updateRow(idx, { domain: e.target.value })}
+                              placeholder="e.g., RMG"
+                              aria-label={`Row ${idx + 1} domain`}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              className="input"
+                              value={r?.subDomain || ""}
+                              onChange={(e) => updateRow(idx, { subDomain: e.target.value })}
+                              placeholder="e.g., RMG"
+                              aria-label={`Row ${idx + 1} sub domain`}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              className="input"
+                              value={r?.capability || ""}
+                              onChange={(e) => updateRow(idx, { capability: e.target.value })}
+                              placeholder="e.g., Skills / Competency"
+                              aria-label={`Row ${idx + 1} capability`}
+                            />
+                          </td>
+                          <td>
+                            <textarea
+                              className="textarea"
+                              value={r?.talentPipeline || ""}
+                              onChange={(e) => updateRow(idx, { talentPipeline: e.target.value })}
+                              placeholder="Describe pipeline / assessment notes…"
+                              aria-label={`Row ${idx + 1} talent pipeline`}
+                              style={{ minHeight: 70 }}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              className="input"
+                              value={r?.status || ""}
+                              onChange={(e) => updateRow(idx, { status: e.target.value })}
+                              placeholder="e.g., Active"
+                              aria-label={`Row ${idx + 1} status`}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              className="input"
+                              value={r?.totalResourceCount || ""}
+                              onChange={(e) => updateRow(idx, { totalResourceCount: e.target.value })}
+                              placeholder="e.g., 15"
+                              aria-label={`Row ${idx + 1} total resource count`}
+                            />
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            <button
+                              type="button"
+                              className="btn btnSmall btnGhost sfRowAction"
+                              onClick={() => removeRow(idx)}
+                              aria-label={`Remove row ${idx + 1}`}
+                              title="Remove row"
+                            >
+                              −
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button type="button" className="btn btnSmall btnGhost" onClick={addRow}>
+                      + Add row
+                    </button>
+                  </div>
+
+                  <div className="helper">Export will render the table with wrapping and a bottom band like the reference.</div>
+                </div>
+              ) : (
+                <button type="button" className="btn btnSmall btnGhost" onClick={addRow}>
+                  + Add row
+                </button>
+              )}
             </Section>
           </div>
         </div>
@@ -1204,16 +1421,7 @@ export default function SlideForm({
                 />
               </div>
 
-              <Section
-                title="Bullet points"
-                hint="Leave a bullet empty to omit it from export."
-                defaultOpen
-                actions={
-                  <button type="button" className="btn btnSmall btnGhost" onClick={addBullet}>
-                    Add
-                  </button>
-                }
-              >
+              <Section title="Bullet points" hint="Leave a bullet empty to omit it from export." defaultOpen actions={<span className="kbdHint">Use “Add” below</span>}>
                 <div className="formList">
                   {(slide.bullets || []).map((b, idx) => (
                     <div key={idx} className="formListRow">
@@ -1236,6 +1444,9 @@ export default function SlideForm({
                       </button>
                     </div>
                   ))}
+                  <button type="button" className="btn btnSmall btnGhost" onClick={addBullet}>
+                    + Add bullet
+                  </button>
                 </div>
               </Section>
             </div>

@@ -575,7 +575,6 @@ async function addSkillFactorySlide2(pptx, factory) {
 
   // Main 3-slot layout area (above band)
   const topY = 1.05;
-  const contentH = SLIDE_H - bandH - topY - 0.25;
   const gap = 0.35;
 
   const leftW = 3.1;
@@ -646,6 +645,181 @@ async function addSkillFactorySlide2(pptx, factory) {
         };
         await place(extras[i], box, false);
       }
+    }
+  }
+}
+
+async function addSkillFactorySlide3(pptx, factory) {
+  /**
+   * Skill Factory Slide 3: title + table + bottom band.
+   * Matches the reference screenshot structure (minimal, company-style).
+   */
+  const SLIDE_W = 13.333;
+  const SLIDE_H = 7.5;
+
+  const s = pptx.addSlide();
+  s.background = { color: "FFFFFF" };
+
+  const sf3 = factory?.slides?.slide3 || {};
+  const title = (sf3.title || "").trim() || "Continuous Assessment";
+
+  // Title (top-left)
+  s.addText(title, {
+    x: 0.6,
+    y: 0.45,
+    w: SLIDE_W - 1.2,
+    h: 0.4,
+    fontSize: 16,
+    bold: true,
+    color: "111827"
+  });
+
+  // Bottom band
+  const bandH = 1.05;
+  const bandColor = hexToPptxColor(sf3.bottomBandColor || "#2F78A8");
+  s.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: SLIDE_H - bandH,
+    w: SLIDE_W,
+    h: bandH,
+    fill: { color: bandColor },
+    line: { color: bandColor }
+  });
+
+  // Table container
+  const x0 = 0.6;
+  const y0 = 1.15;
+  const w0 = SLIDE_W - 1.2;
+  const h0 = SLIDE_H - bandH - y0 - 0.25;
+
+  // Outer border
+  s.addShape(pptx.ShapeType.rect, {
+    x: x0,
+    y: y0,
+    w: w0,
+    h: h0,
+    fill: { color: "FFFFFF" },
+    line: { color: "D1D5DB", width: 0.8 }
+  });
+
+  // Top grey band on table (as in screenshot)
+  s.addShape(pptx.ShapeType.rect, {
+    x: x0,
+    y: y0,
+    w: w0,
+    h: 0.12,
+    fill: { color: "CBD5E1" },
+    line: { color: "CBD5E1" }
+  });
+
+  const columns = Array.isArray(sf3.columns) ? sf3.columns : [];
+  const cols = columns.length || 6;
+
+  // Column widths roughly match screenshot: narrow fields + wide Talent Pipeline
+  const colWeights = cols === 6 ? [1.05, 1.15, 1.6, 3.6, 1.05, 1.25] : new Array(cols).fill(1);
+  const weightSum = colWeights.reduce((a, b) => a + b, 0);
+  const colWs = colWeights.map((w) => (w0 * w) / weightSum);
+
+  const headerH = 0.48;
+  const rowH = 0.62; // allow wrapped text
+  const padX = 0.10;
+
+  // Header background (blue-ish)
+  const headerY = y0 + 0.12;
+  s.addShape(pptx.ShapeType.rect, {
+    x: x0,
+    y: headerY,
+    w: w0,
+    h: headerH,
+    fill: { color: "1D4ED8", transparency: 12 },
+    line: { color: "D1D5DB", transparency: 100 }
+  });
+
+  // Header text
+  let cx = x0;
+  for (let i = 0; i < cols; i++) {
+    const label = (columns[i] || "").trim() || `Column ${i + 1}`;
+    s.addText(label, {
+      x: cx + padX,
+      y: headerY + 0.14,
+      w: Math.max(0, colWs[i] - padX * 2),
+      h: headerH - 0.18,
+      fontSize: 10,
+      bold: true,
+      color: "FFFFFF"
+    });
+    cx += colWs[i];
+  }
+
+  // Grid vertical lines
+  cx = x0;
+  for (let i = 0; i < cols - 1; i++) {
+    cx += colWs[i];
+    s.addShape(pptx.ShapeType.line, {
+      x: cx,
+      y: headerY,
+      w: 0,
+      h: h0 - 0.12,
+      line: { color: "E5E7EB", width: 0.6 }
+    });
+  }
+
+  const rows = Array.isArray(sf3.rows) ? sf3.rows : [];
+  const maxRows = Math.max(1, Math.floor((h0 - 0.12 - headerH) / rowH));
+  const slice = rows.slice(0, maxRows);
+
+  // Body rows
+  for (let r = 0; r < maxRows; r++) {
+    const row = slice[r] || null;
+    const y = headerY + headerH + r * rowH;
+
+    // alternating fill
+    if (r % 2 === 0) {
+      s.addShape(pptx.ShapeType.rect, {
+        x: x0,
+        y,
+        w: w0,
+        h: rowH,
+        fill: { color: "F9FAFB" },
+        line: { color: "FFFFFF", transparency: 100 }
+      });
+    }
+
+    // Row divider
+    s.addShape(pptx.ShapeType.line, {
+      x: x0,
+      y,
+      w: w0,
+      h: 0,
+      line: { color: "E5E7EB", width: 0.6 }
+    });
+
+    // Cells (mapped to known fields for the standard 6-col layout)
+    const values =
+      cols === 6
+        ? [
+            (row?.domain || "").toString(),
+            (row?.subDomain || "").toString(),
+            (row?.capability || "").toString(),
+            (row?.talentPipeline || "").toString(),
+            (row?.status || "").toString(),
+            (row?.totalResourceCount || "").toString()
+          ]
+        : new Array(cols).fill("").map(() => "");
+
+    cx = x0;
+    for (let c = 0; c < cols; c++) {
+      const t = (values[c] || "").trim() || "—";
+      s.addText(t, {
+        x: cx + padX,
+        y: y + 0.10,
+        w: Math.max(0, colWs[c] - padX * 2),
+        h: rowH - 0.12,
+        fontSize: c === 3 ? 9 : 10,
+        color: "111827",
+        valign: "top"
+      });
+      cx += colWs[c];
     }
   }
 }
@@ -792,11 +966,12 @@ export async function exportSlidesToPptx({ cover, last, skillFactories, slides, 
   // Slide 1: Global Cover (always)
   await addCoverSlide(pptx, cover);
 
-  // Skill Factory slides (Slide 1 then Slide 2 per factory)
+  // Skill Factory slides (Slide 1 then Slide 2 then Slide 3 per factory)
   const safeFactories = Array.isArray(skillFactories) ? skillFactories : [];
   for (const f of safeFactories) {
     await addSkillFactorySlide1(pptx, f);
     await addSkillFactorySlide2(pptx, f);
+    await addSkillFactorySlide3(pptx, f);
   }
 
   // Normal content slides (0..n)

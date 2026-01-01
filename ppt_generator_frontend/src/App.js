@@ -30,6 +30,7 @@ const GLOBAL_COVER_ID = "__global_cover__";
 const GLOBAL_LAST_ID = "__global_last__";
 const SKILL_FACTORY_SLIDE1_PREFIX = "__skill_factory_slide1__:";
 const SKILL_FACTORY_SLIDE2_PREFIX = "__skill_factory_slide2__:";
+const SKILL_FACTORY_SLIDE3_PREFIX = "__skill_factory_slide3__:";
 
 function makeTimestamp(d = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");
@@ -70,6 +71,7 @@ function App() {
   const isLastSelected = selectedId === GLOBAL_LAST_ID;
   const isSkillFactorySlide1Selected = selectedId?.startsWith(SKILL_FACTORY_SLIDE1_PREFIX);
   const isSkillFactorySlide2Selected = selectedId?.startsWith(SKILL_FACTORY_SLIDE2_PREFIX);
+  const isSkillFactorySlide3Selected = selectedId?.startsWith(SKILL_FACTORY_SLIDE3_PREFIX);
 
   // Memoize to keep a stable reference for hook dependency lists (CI treats hook warnings as errors).
   const factories = useMemo(
@@ -80,8 +82,9 @@ function App() {
   const selectedFactoryId = useMemo(() => {
     if (isSkillFactorySlide1Selected) return selectedId.slice(SKILL_FACTORY_SLIDE1_PREFIX.length) || null;
     if (isSkillFactorySlide2Selected) return selectedId.slice(SKILL_FACTORY_SLIDE2_PREFIX.length) || null;
+    if (isSkillFactorySlide3Selected) return selectedId.slice(SKILL_FACTORY_SLIDE3_PREFIX.length) || null;
     return null;
-  }, [selectedId, isSkillFactorySlide1Selected, isSkillFactorySlide2Selected]);
+  }, [selectedId, isSkillFactorySlide1Selected, isSkillFactorySlide2Selected, isSkillFactorySlide3Selected]);
 
   const selectedFactory = useMemo(() => {
     if (!selectedFactoryId) return null;
@@ -107,7 +110,7 @@ function App() {
   useEffect(() => {
     if (isCoverSelected || isLastSelected) return;
 
-    if (isSkillFactorySlide1Selected || isSkillFactorySlide2Selected) {
+    if (isSkillFactorySlide1Selected || isSkillFactorySlide2Selected || isSkillFactorySlide3Selected) {
       const ok = selectedFactoryId && factories.some((f) => f.id === selectedFactoryId);
       if (!ok) setSelectedId(GLOBAL_COVER_ID);
       return;
@@ -129,6 +132,7 @@ function App() {
     isLastSelected,
     isSkillFactorySlide1Selected,
     isSkillFactorySlide2Selected,
+    isSkillFactorySlide3Selected,
     selectedFactoryId
   ]);
 
@@ -198,6 +202,18 @@ function App() {
         slides: {
           ...(f.slides || {}),
           slide2: { ...(f.slides?.slide2 || {}), ...slide2Patch }
+        }
+      }))
+    );
+  };
+
+  const updateSkillFactorySlide3 = (factoryId, slide3Patch) => {
+    setSkillFactoriesState((prev) =>
+      upsertSkillFactory(prev, factoryId, (f) => ({
+        ...f,
+        slides: {
+          ...(f.slides || {}),
+          slide3: { ...(f.slides?.slide3 || {}), ...slide3Patch }
         }
       }))
     );
@@ -295,7 +311,7 @@ function App() {
   };
 
   const previewProps = useMemo(() => {
-    const totalSlides = 2 + factories.length * 2 + slides.length; // cover + (sf1+sf2 per factory) + normal slides + last
+    const totalSlides = 2 + factories.length * 3 + slides.length; // cover + (sf1+sf2+sf3 per factory) + normal slides + last
 
     if (isCoverSelected) {
       return {
@@ -319,27 +335,29 @@ function App() {
       };
     }
 
-    if (isSkillFactorySlide1Selected || isSkillFactorySlide2Selected) {
+    if (isSkillFactorySlide1Selected || isSkillFactorySlide2Selected || isSkillFactorySlide3Selected) {
       const sfIndex = selectedFactoryId ? factories.findIndex((f) => f.id === selectedFactoryId) : -1;
-      const base = 1 + Math.max(0, sfIndex) * 2; // cover is 0; each factory contributes 2 slides
+      const base = 1 + Math.max(0, sfIndex) * 3; // cover is 0; each factory contributes 3 slides
+      const offset = isSkillFactorySlide2Selected ? 1 : isSkillFactorySlide3Selected ? 2 : 0;
+
       return {
-        mode: isSkillFactorySlide2Selected ? "skillFactorySlide2" : "skillFactorySlide1",
+        mode: isSkillFactorySlide2Selected ? "skillFactorySlide2" : isSkillFactorySlide3Selected ? "skillFactorySlide3" : "skillFactorySlide1",
         cover: globalCoverSlide,
         last: globalLastSlide,
         slide: null,
         skillFactory: selectedFactory,
-        slideIndex: base + (isSkillFactorySlide2Selected ? 1 : 0),
+        slideIndex: base + offset,
         totalSlides
       };
     }
 
-    // Normal slide indices start after cover + all skill factory slides (2 per factory)
+    // Normal slide indices start after cover + all skill factory slides (3 per factory)
     return {
       mode: "slide",
       cover: globalCoverSlide,
       last: globalLastSlide,
       slide: selectedSlide,
-      slideIndex: 1 + factories.length * 2 + Math.max(0, selectedIndex),
+      slideIndex: 1 + factories.length * 3 + Math.max(0, selectedIndex),
       totalSlides
     };
   }, [
@@ -347,6 +365,7 @@ function App() {
     isLastSelected,
     isSkillFactorySlide1Selected,
     isSkillFactorySlide2Selected,
+    isSkillFactorySlide3Selected,
     globalCoverSlide,
     globalLastSlide,
     factories,
@@ -364,7 +383,7 @@ function App() {
 
     if (isCoverSelected) return items;
 
-    if (isSkillFactorySlide1Selected || isSkillFactorySlide2Selected) {
+    if (isSkillFactorySlide1Selected || isSkillFactorySlide2Selected || isSkillFactorySlide3Selected) {
       const sfIndex = selectedFactoryId ? factories.findIndex((f) => f.id === selectedFactoryId) : -1;
       const displayFactoryIndex = sfIndex >= 0 ? sfIndex + 1 : 1;
 
@@ -373,7 +392,8 @@ function App() {
         selectedFactory?.name?.trim?.() ||
         `Skill Factory ${displayFactoryIndex}`;
 
-      const sfSlideNo = isSkillFactorySlide2Selected ? 2 : 1;
+      const sfSlideNo = isSkillFactorySlide3Selected ? 3 : isSkillFactorySlide2Selected ? 2 : 1;
+
       items.push({
         label: factoryName,
         title: factoryName
@@ -391,9 +411,9 @@ function App() {
     }
 
     // Normal slide: show Slide N where N is deck slide number (Cover is Slide 1).
-    // Normal slides start at 2 + factories*2 (because cover is #1).
+    // Normal slides start at 2 + factories*3 (because cover is #1).
     const safeIdx = Math.max(0, Number.isFinite(selectedIndex) ? selectedIndex : 0);
-    const slideNumber = 2 + factories.length * 2 + safeIdx;
+    const slideNumber = 2 + factories.length * 3 + safeIdx;
     items.push({ label: `Slide ${slideNumber}`, title: `Content slide ${slideNumber}` });
     return items;
   }, [
@@ -402,6 +422,7 @@ function App() {
     isLastSelected,
     isSkillFactorySlide1Selected,
     isSkillFactorySlide2Selected,
+    isSkillFactorySlide3Selected,
     selectedFactory,
     selectedFactoryId,
     selectedIndex
@@ -503,13 +524,19 @@ function App() {
                     ? "cover"
                     : isLastSelected
                       ? "last"
-                      : isSkillFactorySlide2Selected
-                        ? "skillFactorySlide2"
-                        : isSkillFactorySlide1Selected
-                          ? "skillFactorySlide1"
-                          : "slide"
+                      : isSkillFactorySlide3Selected
+                        ? "skillFactorySlide3"
+                        : isSkillFactorySlide2Selected
+                          ? "skillFactorySlide2"
+                          : isSkillFactorySlide1Selected
+                            ? "skillFactorySlide1"
+                            : "slide"
                 }
-                slide={isCoverSelected || isLastSelected || isSkillFactorySlide1Selected || isSkillFactorySlide2Selected ? null : selectedSlide}
+                slide={
+                  isCoverSelected || isLastSelected || isSkillFactorySlide1Selected || isSkillFactorySlide2Selected || isSkillFactorySlide3Selected
+                    ? null
+                    : selectedSlide
+                }
                 cover={globalCoverSlide}
                 last={globalLastSlide}
                 skillFactory={selectedFactory}
@@ -518,6 +545,7 @@ function App() {
                 onLastChange={setGlobalLastSlide}
                 onSkillFactorySlide1Change={(patch) => selectedFactoryId && updateSkillFactorySlide1(selectedFactoryId, patch)}
                 onSkillFactorySlide2Change={(patch) => selectedFactoryId && updateSkillFactorySlide2(selectedFactoryId, patch)}
+                onSkillFactorySlide3Change={(patch) => selectedFactoryId && updateSkillFactorySlide3(selectedFactoryId, patch)}
               />
 
               <section className="card" aria-label="How to use">
