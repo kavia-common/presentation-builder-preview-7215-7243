@@ -844,23 +844,32 @@ a{color:inherit}
   /*
     Preview “stage” (LIVE PREVIEW PANE):
     - Must always be fully visible in its pane (auto-fit by width + height).
-    - Must never cause horizontal overflow (even with transform scaling).
+    - Must be centered (both axes) with no unused “corner anchoring”.
+    - Must never cause horizontal overflow or bleed into the editor pane.
   */
   min-width:0;
   min-height:0;
   width:100%;
   max-width:100%;
 
-  /* Give the preview a real, bounded viewport height in the split layout. */
+  /* Give the preview a real, bounded viewport inside the split layout. */
   height:100%;
   max-height:100%;
 
-  overflow:hidden; /* critical: clip any scaled content */
+  /* Absolute hard clip so transform-scaled content cannot paint outside the pane */
+  overflow:hidden;
+  overflow-x:clip;
+  overflow-y:hidden;
+
   background:rgba(17,24,39,0.04);
 
   /* Slightly larger padding to avoid 1px edge clipping due to transform rounding */
   padding:14px;
 
+  /*
+    Use grid centering to eliminate empty left-side space and corner placement.
+    This centers the scaled 16:9 canvas within the available pane area.
+  */
   display:grid;
   place-items:center;
 
@@ -886,7 +895,12 @@ a{color:inherit}
   width:1280px;
   height:720px;
 
-  transform-origin:top center;
+  /*
+    Center-based transform origin is critical:
+    - prevents the scaled canvas from appearing "stuck" to a corner
+    - keeps centering visually correct when scaling down/up
+  */
+  transform-origin:center;
   transition:transform .12s ease;
 
   display:grid;
