@@ -1518,16 +1518,21 @@ export default function SlideForm({
 
   const update = (patch) => onChange({ ...slide, ...patch });
 
+  // Keep inputs controlled: never allow undefined/nullable values to flow into <input value>.
+  const safeTitle = (slide?.title ?? "").toString();
+  const safeSubtitle = (slide?.subtitle ?? "").toString();
+  const safeBullets = Array.isArray(slide?.bullets) ? slide.bullets.map((b) => (b ?? "").toString()) : [""];
+
   const updateBullet = (idx, value) => {
-    const next = [...(slide.bullets || [])];
+    const next = [...safeBullets];
     next[idx] = value;
     update({ bullets: next });
   };
 
-  const addBullet = () => update({ bullets: [...(slide.bullets || []), ""] });
+  const addBullet = () => update({ bullets: [...safeBullets, ""] });
 
   const removeBullet = (idx) => {
-    const next = [...(slide.bullets || [])];
+    const next = [...safeBullets];
     next.splice(idx, 1);
     update({ bullets: next.length ? next : [""] });
   };
@@ -1591,7 +1596,7 @@ export default function SlideForm({
                 <input
                   id={titleId}
                   className="input"
-                  value={(slide.title || "").toString()}
+                  value={safeTitle}
                   onChange={(e) => update({ title: e.target.value })}
                   placeholder="e.g., Quarterly Results"
                   required
@@ -1606,7 +1611,7 @@ export default function SlideForm({
                 <input
                   id={subtitleId}
                   className="input"
-                  value={(slide.subtitle || "").toString()}
+                  value={safeSubtitle}
                   onChange={(e) => update({ subtitle: e.target.value })}
                   placeholder="e.g., Highlights and next steps"
                 />
@@ -1614,11 +1619,11 @@ export default function SlideForm({
 
               <Section title="Bullet points" hint="Leave a bullet empty to omit it from export." defaultOpen actions={<span className="kbdHint">Use “Add” below</span>}>
                 <div className="formList">
-                  {(slide.bullets || []).map((b, idx) => (
+                  {safeBullets.map((b, idx) => (
                     <div key={idx} className="formListRow">
                       <input
                         className="input"
-                        value={(b || "").toString()}
+                        value={b}
                         onChange={(e) => updateBullet(idx, e.target.value)}
                         placeholder={`Bullet ${idx + 1}`}
                         aria-label={`Bullet ${idx + 1}`}
@@ -1629,7 +1634,7 @@ export default function SlideForm({
                         onClick={() => removeBullet(idx)}
                         aria-label={`Remove bullet ${idx + 1}`}
                         title="Remove bullet"
-                        disabled={(slide.bullets || []).length <= 1}
+                        disabled={safeBullets.length <= 1}
                       >
                         −
                       </button>

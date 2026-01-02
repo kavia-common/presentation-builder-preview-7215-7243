@@ -89,7 +89,8 @@ test("deleting the only normal slide results in zero normal slides and falls bac
   });
 
   // Selection should be a sensible fallback: Global Cover.
-  expect(screen.getByText(/^Global Cover$/i)).toBeInTheDocument();
+  // Use an unambiguous query (multiple "Global Cover" strings exist: selector + editor).
+  expect(screen.getByRole("heading", { name: /^Global Cover$/i })).toBeInTheDocument();
 
   // App remains stable: Preview button is still present/enabled state coherent.
   expect(screen.getByRole("button", { name: /Open preview/i })).toBeInTheDocument();
