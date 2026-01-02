@@ -912,44 +912,80 @@ function App() {
         fileNameHint={buildSuggestedFileName()}
       />
 
-      {/* Header: slide selector + primary actions inline (responsive). */}
+      {/* Header: standard nav bar (sticky), with mega-menu + factories dropdown + actions. */}
       <header className="appHeader appHeaderMinimal">
-        <div className="container headerInner headerInnerMinimal headerToolbar">
-          <div className="headerNav">
-            <label className="topSlideSelectLabel" htmlFor="topSlideSelect">
-              Slide
-            </label>
+        <div className="container navBar" role="navigation" aria-label="Top navigation">
+          <div className="navLeft">
+            <div className="navBrand" aria-label="Brand">
+              PPT Builder
+            </div>
 
-            <SlideMegaMenu
-              id="topSlideSelect"
-              value={dropdownValue}
-              factories={factories}
-              slides={slides}
-              onChange={(next) => {
-                if (!next) return;
-                // Keep the exact same selection + scroll behavior as the old <select>.
-                setSelectedId(next);
-                window.requestAnimationFrame(() => {
-                  rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
-                });
-              }}
-            />
+            <div className="navItems">
+              {/* Slides (mega): keep existing grouped mega-menu for slide selection */}
+              <div className="navItem">
+                <span className="navItemLabel">Slides</span>
+                <SlideMegaMenu
+                  id="topSlideSelect"
+                  value={dropdownValue}
+                  factories={factories}
+                  slides={slides}
+                  onChange={(next) => {
+                    if (!next) return;
+                    setSelectedId(next);
+                    window.requestAnimationFrame(() => {
+                      rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+                    });
+                  }}
+                />
+              </div>
+
+              {/* Skill Factories: simple dropdown listing all factories by name; selecting jumps to Slide 1 */}
+              <div className="navItem">
+                <label className="navItemLabel" htmlFor="sfNavSelect">
+                  Skill Factories
+                </label>
+                <select
+                  id="sfNavSelect"
+                  className="select navSelect"
+                  value={selectedFactoryId || ""}
+                  onChange={(e) => {
+                    const fid = e.target.value;
+                    if (!fid) return;
+                    setSelectedId(`${SKILL_FACTORY_SLIDE1_PREFIX}${fid}`);
+                    window.requestAnimationFrame(() => {
+                      rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+                    });
+                  }}
+                  aria-label="Jump to Skill Factory (Slide 1)"
+                >
+                  <option value="" disabled>
+                    Select…
+                  </option>
+                  {factories.map((f, idx) => (
+                    <option key={f.id} value={f.id}>
+                      {getFactoryDisplayName(f, idx + 1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
-          {/* Order required: [Mega-menu] | Add Skill Factory | Add Slide | Generate | Delete */}
-          <div className="headerActions" aria-label="Presentation actions">
+          <div className="navRight" aria-label="Presentation actions">
+            {/* Preview: opens the full-deck preview modal */}
             <button
               className="btn btnGhost"
               type="button"
-              onClick={addSkillFactory}
+              onClick={() => setIsPreviewOpen(true)}
               disabled={isGenerating}
               aria-disabled={isGenerating}
-              aria-label="Add Skill Factory"
-              title={isGenerating ? "Generating…" : "Add Skill Factory group"}
+              aria-label="Open preview"
+              title={isGenerating ? "Generating…" : "Open full-deck preview"}
             >
-              + Add Skill Factory
+              Preview
             </button>
 
+            {/* Add Slide */}
             <button
               className="btn btnSecondary"
               type="button"
@@ -957,11 +993,25 @@ function App() {
               disabled={isGenerating}
               aria-disabled={isGenerating}
               aria-label="Add slide"
-              title={isGenerating ? "Generating…" : "Add a new slide"}
+              title={isGenerating ? "Generating…" : "Add a new normal slide"}
             >
-              + Add Slide
+              Add Slide
             </button>
 
+            {/* Add Skill Factory */}
+            <button
+              className="btn btnGhost"
+              type="button"
+              onClick={addSkillFactory}
+              disabled={isGenerating}
+              aria-disabled={isGenerating}
+              aria-label="Add Skill Factory"
+              title={isGenerating ? "Generating…" : "Add Skill Factory group (4 slides)"}
+            >
+              Add Skill Factory
+            </button>
+
+            {/* Generate (same as current behavior: opens preview modal) */}
             <button
               className="btn"
               type="button"
@@ -974,6 +1024,7 @@ function App() {
               {isGenerating ? "Generating…" : "Generate"}
             </button>
 
+            {/* Delete: confirm + disabled for Global Cover/Last (existing logic) */}
             <button
               className="btn btnDanger"
               type="button"
@@ -983,7 +1034,7 @@ function App() {
               aria-label={deleteLabel}
               title={deleteTitle}
             >
-              {deleteLabel}
+              Delete
             </button>
           </div>
         </div>

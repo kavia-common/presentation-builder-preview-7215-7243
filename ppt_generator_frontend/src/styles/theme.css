@@ -232,64 +232,90 @@ a{color:inherit}
   backdrop-filter:saturate(1.2) blur(4px);
 }
 
-/* Header toolbar: mega-menu + actions inline and responsive */
-.headerInner{
+/* Header toolbar: standard nav bar */
+.navBar{
   display:flex;
-  align-items:flex-start;
+  align-items:center;
   justify-content:space-between;
   gap:14px;
+  flex-wrap:wrap; /* responsive wrapping */
 }
-.headerInnerMinimal{
+
+.navLeft{
+  display:flex;
   align-items:center;
-  justify-content:flex-start;
-  gap:12px;
+  gap:14px;
+  min-width:0;
+  flex:1 1 560px;
 }
-.headerToolbar{
+
+.navBrand{
+  font-weight:950;
+  letter-spacing:-.02em;
+  font-size:14px;
+  color:rgba(17,24,39,0.92);
+  padding:6px 8px;
+  border-radius:12px;
+  user-select:none;
+  white-space:nowrap;
+}
+
+.navItems{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
   flex-wrap:wrap;
 }
 
-.headerNav{
+.navItem{
   display:flex;
   align-items:center;
-  gap:10px;
+  gap:8px;
   min-width:0;
-  flex:999 1 520px; /* prefer keeping mega-menu on first line */
 }
 
-.headerActions{
+.navItemLabel{
+  font-size:12px;
+  font-weight:950;
+  color:rgba(17,24,39,0.72);
+  white-space:nowrap;
+}
+
+.navSelect{
+  width:auto;
+  min-width:220px;
+  max-width:min(340px, 100%);
+}
+
+.navRight{
   display:flex;
   align-items:center;
   gap:10px;
-  flex:1 1 360px;   /* allow actions to wrap sooner on narrow headers */
-  margin-left:auto; /* push actions to the right on wide screens */
-  flex-wrap:wrap;   /* allow buttons to wrap if needed */
+  flex:0 1 auto;
+  margin-left:auto;
+  flex-wrap:wrap;
   justify-content:flex-end;
 }
 
-.topSlideSelectLabel{
-  font-size:12px;
-  font-weight:950;
-  color:rgba(17,24,39,0.78)
-}
-.topSlideSelect{max-width:min(560px, 100%)}
-
-/* A11y: consistent, visible focus on primary interactive controls in the header */
-.headerActions .btn:focus,
+/* A11y: consistent, visible focus on header controls */
+.navRight .btn:focus,
+.navSelect:focus,
 .smButton:focus{
   outline:2px solid rgba(37,99,235,0.40);
   outline-offset:2px;
 }
 
-/* Narrow widths: let actions drop below the menu (still usable) */
+/* Responsive tweaks */
 @media (max-width: 720px){
-  .headerActions{margin-left:0}
-  .headerNav{flex:1 1 100%}
+  .navRight{margin-left:0}
+  .navLeft{flex:1 1 100%}
 }
 
-/* Extra-small: make buttons comfortable to tap without crowding */
 @media (max-width: 520px){
-  .headerActions{width:100%}
-  .headerActions .btn{flex:1 1 160px}
+  .navRight{width:100%}
+  .navRight .btn{flex:1 1 150px}
+  .navSelect{min-width:200px}
 }
 
 /* --- Top slide mega-menu (grouped selector) --- */
