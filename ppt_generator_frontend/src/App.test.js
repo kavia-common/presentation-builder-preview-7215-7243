@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 
@@ -82,7 +82,7 @@ test("top-bar Delete deletes a normal slide, updates selection, and persists to 
 
   await user.click(deleteBtn);
 
-  expect(confirmSpy).toHaveBeenCalled();
+  expect(confirmSpy).toHaveBeenCalledTimes(1);
 
   // After deletion, selection should move to a neighboring slide.
   // NOTE: The SlideMegaMenu trigger button's accessible name is "Slide" (it is labeled by the
@@ -92,9 +92,11 @@ test("top-bar Delete deletes a normal slide, updates selection, and persists to 
   expect(screen.getByText(/^(Slide\s+\d+\s+—|Global Cover|Global Last Page)/i)).toBeInTheDocument();
 
   // localStorage should contain exactly 1 normal slide now (we created 2, deleted 1).
-  const stored = JSON.parse(window.localStorage.getItem(LS_NORMAL_SLIDES_KEY) || "[]");
-  expect(Array.isArray(stored)).toBe(true);
-  expect(stored).toHaveLength(1);
+  await waitFor(() => {
+    const stored = JSON.parse(window.localStorage.getItem(LS_NORMAL_SLIDES_KEY) || "[]");
+    expect(Array.isArray(stored)).toBe(true);
+    expect(stored).toHaveLength(1);
+  });
 });
 
 test("top-bar Delete deletes Skill Factory Slide 1 (still works)", async () => {

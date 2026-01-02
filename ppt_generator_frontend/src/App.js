@@ -379,6 +379,10 @@ function App() {
     setSelectedId(newSlide.id);
   };
 
+  /**
+   * Delete a normal slide and revoke any associated Object URL.
+   * Note: selection + empty-state handling is managed by handleConfirmDelete.
+   */
   const deleteSlide = (id) => {
     setSlides((prev) => {
       const toDelete = prev.find((s) => s.id === id);
@@ -759,21 +763,25 @@ function App() {
      * - Select closest neighbor (prefer previous in same group, else next)
      * - Mega-menu/preview/export auto-update via state.
      * - Persist changes to localStorage.
+     *
+     * Defensive guarantees (normal slides):
+     * - If deletion would result in 0 normal slides, create a new empty slide and select it
+     *   (prevents empty-state crashes and keeps editor usable).
      */
-    if (deleteDisabled) return;
-    if (!selectedId) return;
+    if (deleteDisabled) return; // includes invalid selection / pinned slides
+    if (typeof selectedId !== "string" || !selectedId) return;
 
-    const ok = window.confirm(`Delete this slide? This cannot be undone.`);
+    const ok = window.confirm("Delete this slide? This cannot be undone.");
     if (!ok) return;
 
     const before = buildOrderedSelectionList({ factoriesList: factories, slidesList: slides });
 
+    // --- Skill Factory deletion (keep existing behavior) ---
     if (isSkillFactorySelection(selectedId)) {
       const parsed = parseSkillFactorySelection(selectedId);
       if (!parsed?.factoryId || !parsed?.slideKey) return;
 
-      // Mutate factories state (async), but we can compute the post-delete order synchronously.
-      // Build a simulated "after factories" list for selection resolution.
+      // Mutate factories state (async), but compute post-delete order synchronously.
       const nextFactories = factories
         .map((f) => {
           if (f.id !== parsed.factoryId) return f;
@@ -798,16 +806,41 @@ function App() {
       return;
     }
 
-    // Normal slide deletion
-    const afterSlides = slides.filter((s) => s.id !== selectedId);
-    const after = buildOrderedSelectionList({ factoriesList: factories, slidesList: afterSlides });
-    const nextSel = resolveClosestNeighborSelection({ beforeList: before, afterList: after, deletedId: selectedId });
+    // --- Normal slide deletion ---
+    // Defensive: only treat as normal slide if it exists in current slides array.
+    const isNormalSlide = slides.some((s) => s?.id === selectedId);
+    if (!isNormalSlide) return;
 
-    deleteSlide(selectedId);
+    // Build next slides list and guarantee non-empty normal slide state.
+    const toDelete = slides.find((s) => s.id === selectedId);
+    if (toDelete?.image?.objectUrl) URL.revokeObjectURL(toDelete.image.objectUrl);
+
+    let nextSlides = slides.filter((s) => s.id !== selectedId);
+
+    // If no normal slides remain, create one immediately to keep UI stable.
+    let createdSlide = null;
+    if (nextSlides.length === 0) {
+      createdSlide = createEmptySlide();
+      nextSlides = [createdSlide];
+    }
+
+    // Choose next selection based on the *actual* post-delete ordered list.
+    const after = buildOrderedSelectionList({ factoriesList: factories, slidesList: nextSlides });
+    let nextSel = resolveClosestNeighborSelection({ beforeList: before, afterList: after, deletedId: selectedId });
+
+    // If we created a replacement normal slide, prefer selecting it (requirement: avoid empty state crashes).
+    if (createdSlide) nextSel = createdSlide.id;
+
+    // Apply updates in a predictable order:
+    // 1) set slides (updates preview/editor)
+    // 2) set selection (ensures editor points at a valid slide)
+    setSlides(nextSlides);
     setSelectedId(nextSel);
-  }, [deleteDisabled, selectedId, factories, slides, deleteSkillFactorySlide]);
 
-  // Resizable divider handlers (preserved).
+    // Persist immediately to localStorage for reliability (tests + UX).
+    // (We also keep the existing useEffect persistence as a secondary safety net.)
+    saveNormalSlidesToStorage(nextSlides);
+  }, [deleteDisabled, selectedId, factories, slides, deleteSkillFactorySlide]);// Resizable divider handlers (preserved).
   const startDrag = (e) => {
     e.preventDefault();
     dragStateRef.current.dragging = true;
