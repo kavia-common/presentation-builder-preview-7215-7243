@@ -12,7 +12,13 @@
 
 /* Existing styles preserved in template; file overwritten here to include full theme rules used across app. */
 *{box-sizing:border-box}
-html,body{width:100%;max-width:100%}
+html,body{
+  width:100%;
+  max-width:100%;
+  /* Important: do NOT lock vertical scrolling globally; the page must be able to scroll. */
+  height:auto;
+  min-height:100%;
+}
 body{
   margin:0;
   font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
@@ -21,6 +27,9 @@ body{
 
   /* Hard-stop global horizontal scrolling caused by nested transforms/long content */
   overflow-x:hidden;
+
+  /* Explicitly allow vertical scroll (some embedded hosts/styles accidentally disable it) */
+  overflow-y:auto;
 }
 
 /* Ensure media/long tokens never force the page wider than the viewport */
@@ -645,13 +654,17 @@ a{color:inherit}
   overflow-x:hidden; /* guard against accidental layout overflow */
   display:flex;
   flex-direction:column;
+
+  /* Do not lock vertical scrolling at the shell level */
+  overflow-y:visible;
 }
 .appMain{
   flex:1;
   min-width:0;
   width:100%;
   max-width:100%;
-  overflow-x:clip; /* stronger than hidden in modern browsers, fallback is harmless */
+  overflow-x:clip; /* prevent horizontal overflow regressions */
+  overflow-y:visible; /* allow page scroll */
 }
 
 /* New main layout (no left hierarchy rail) */
@@ -698,6 +711,18 @@ a{color:inherit}
   max-width:100%;
 }
 
+/*
+  Give the split area a practical viewport-bound height so:
+  - live preview is visible (not pushed "below the fold" with no way to scroll inside)
+  - each pane can scroll internally as needed
+  - page can still scroll normally if content exceeds this
+*/
+.rightPane{min-width:0}
+.splitWrap{
+  /* header is sticky but still consumes layout height; leave room using viewport math */
+  max-height:calc(100vh - 90px);
+}
+
 /* Editor pane: vertical scroll allowed; never horizontal */
 .splitPaneRight{
   min-height:0;
@@ -713,6 +738,18 @@ a{color:inherit}
   min-height:0;
   max-width:100%;
   overflow:hidden; /* SlidePreview.pvBody will scroll vertically */
+  display:flex;
+  flex-direction:column;
+}
+
+/* Ensure the SlidePreview card can fill and provide a real height for pvBody */
+.splitPaneLeft .card{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+.splitPaneLeft .cardBody{
+  min-height:0;
 }
 
 .splitDivider{display:grid;place-items:center;cursor:col-resize;user-select:none}
@@ -775,14 +812,17 @@ a{color:inherit}
 .pvBody{
   /*
     Preview “stage” (LIVE PREVIEW PANE):
-    - Explicitly sized viewport that the 16:9 slide scales within
-    - Fit-to-width behavior is retained, but clamped by height as well
-    - Only vertical scrolling is allowed; never horizontal
+    - Must always be fully visible in its pane and scroll vertically if needed.
+    - Must never cause horizontal overflow (even with transform scaling).
   */
   min-width:0;
   min-height:0;
   width:100%;
-  max-width:100%;
+  max-width:100vw;
+
+  /* Give the preview a real, bounded viewport height in the split layout. */
+  height:100%;
+  max-height:100%;
 
   overflow-x:hidden;
   overflow-y:auto;
@@ -823,7 +863,8 @@ a{color:inherit}
   width:1280px;
   height:720px;
 
-  max-width:100%;
+  /* IMPORTANT: clamp to viewport width too (guards against edge cases with transforms) */
+  max-width:min(100%, 100vw);
   max-height:100%;
 
   transform-origin:top center;
@@ -984,7 +1025,15 @@ a{color:inherit}
   min-height:0;
   min-width:0;
 
-  overflow:hidden; /* absolutely no modal horizontal scrollbars */
+  /*
+    INTERNAL SCROLL CONTAINER:
+    - users must be able to scroll vertically within the modal
+    - header stays sticky, but body scrolls
+    - never allow horizontal overflow
+  */
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
   max-width:100%;
 }
 
@@ -1037,26 +1086,22 @@ a{color:inherit}
 */
 .ppPreviewFrame{
   /*
-    The preview viewport inside the modal:
-    - provides a real, clamped height for SlidePreview's fitScale (it reads .pvBody size)
-    - allows vertical scroll if needed
-    - never allows horizontal scroll
+    Modal preview viewport:
+    - Must provide a real height for SlidePreview fitScale (width+height clamped).
+    - Scrolling responsibility is handled by .ppBody (single internal scroll container),
+      so we avoid nested scrollbars that can “trap” scrolling.
   */
   flex:1;
   min-height:0;
   min-width:0;
 
-  /* slightly tighter than before */
   padding:10px;
 
   display:flex;
-  align-items:stretch; /* let SlidePreview body take full available height */
+  align-items:stretch;
   justify-content:center;
 
-  overflow-y:auto;
-  overflow-x:hidden;
-  overscroll-behavior:contain;
-
+  overflow:hidden; /* no nested scroll; ppBody scrolls */
   max-width:100%;
 }
 
@@ -1092,8 +1137,21 @@ a{color:inherit}
 }
 
 /* Prevent any slide content (especially masonry images) from forcing horizontal scroll */
+.ppModal, .ppBody, .ppPreviewArea, .ppPreviewFrame{
+  max-width:100vw;
+  overflow-x:hidden;
+}
 .ppPreviewFrame img{max-width:100%}
 .ppPreviewFrame *{max-width:100%}
+
+/* Extra clamp for common overflow culprits */
+.pvSlide img,
+.pvSlide video,
+.pvSlide canvas,
+.pvSlide svg{
+  max-width:100%;
+  height:auto;
+}
 
 /* Tighten masonry inside the preview specifically so columns can't exceed slide width */
 .pvSlide .sf2MasonryPreview{
