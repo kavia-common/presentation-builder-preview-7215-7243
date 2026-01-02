@@ -967,35 +967,37 @@ function App() {
                 />
               </div>
 
-              {/* Skill Factories: simple dropdown listing all factories by name; selecting jumps to Slide 1 */}
-              <div className="navItem">
-                <label className="navItemLabel" htmlFor="sfNavSelect">
-                  Skill Factories
-                </label>
-                <select
-                  id="sfNavSelect"
-                  className="select navSelect"
-                  value={selectedFactoryId || ""}
-                  onChange={(e) => {
-                    const fid = e.target.value;
-                    if (!fid) return;
-                    setSelectedId(`${SKILL_FACTORY_SLIDE1_PREFIX}${fid}`);
-                    window.requestAnimationFrame(() => {
-                      rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
-                    });
-                  }}
-                  aria-label="Jump to Skill Factory (Slide 1)"
-                >
-                  <option value="" disabled>
-                    Select…
-                  </option>
-                  {factories.map((f, idx) => (
-                    <option key={f.id} value={f.id}>
-                      {getFactoryDisplayName(f, idx + 1)}
+              {/* Skill Factories: only show this control when factories exist (support true zero-factory state) */}
+              {factories.length > 0 ? (
+                <div className="navItem">
+                  <label className="navItemLabel" htmlFor="sfNavSelect">
+                    Skill Factories
+                  </label>
+                  <select
+                    id="sfNavSelect"
+                    className="select navSelect"
+                    value={selectedFactoryId || ""}
+                    onChange={(e) => {
+                      const fid = e.target.value;
+                      if (!fid) return;
+                      setSelectedId(`${SKILL_FACTORY_SLIDE1_PREFIX}${fid}`);
+                      window.requestAnimationFrame(() => {
+                        rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+                      });
+                    }}
+                    aria-label="Jump to Skill Factory (Slide 1)"
+                  >
+                    <option value="" disabled>
+                      Select…
                     </option>
-                  ))}
-                </select>
-              </div>
+                    {factories.map((f, idx) => (
+                      <option key={f.id} value={f.id}>
+                        {getFactoryDisplayName(f, idx + 1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
             </div>
           </div>
 

@@ -134,102 +134,112 @@ export function createDefaultSkillFactoryState() {
 
 // PUBLIC_INTERFACE
 export function loadSkillFactoriesFromStorage() {
-  /** Load skill factory state from localStorage if available. */
+  /** Load skill factory state from localStorage if available (never auto-seed defaults). */
   try {
     const raw = window.localStorage.getItem(LS_SKILL_FACTORY_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
 
     const safeFactories = Array.isArray(parsed?.factories) ? parsed.factories : [];
-    const normalized = safeFactories.map((f) => {
-      const base = createDefaultSkillFactory();
-      return {
-        ...base,
-        ...f,
-        id: f?.id || base.id,
-        slides: {
-          slide1: {
-            ...base.slides.slide1,
-            ...(f?.slides?.slide1 || {}),
-            highlights: Array.isArray(f?.slides?.slide1?.highlights) ? f.slides.slide1.highlights : base.slides.slide1.highlights,
-            lowlights: Array.isArray(f?.slides?.slide1?.lowlights) ? f.slides.slide1.lowlights : base.slides.slide1.lowlights,
-            teamMembers: Array.isArray(f?.slides?.slide1?.teamMembers)
-              ? f.slides.slide1.teamMembers.map((m) => ({
-                  name: (m?.name || "").toString(),
-                  role: (m?.role || "").toString()
-                }))
-              : base.slides.slide1.teamMembers,
-            prevWeekActivities: Array.isArray(f?.slides?.slide1?.prevWeekActivities)
-              ? f.slides.slide1.prevWeekActivities
-              : base.slides.slide1.prevWeekActivities,
-            currentWeekActivities: Array.isArray(f?.slides?.slide1?.currentWeekActivities)
-              ? f.slides.slide1.currentWeekActivities
-              : base.slides.slide1.currentWeekActivities
-          },
-          slide2: {
-            ...base.slides.slide2,
-            ...(f?.slides?.slide2 || {}),
-            metricsImages: Array.isArray(f?.slides?.slide2?.metricsImages)
-              ? f.slides.slide2.metricsImages.map((img) => ({
-                  objectUrl: (img?.objectUrl || "").toString(),
-                  fileName: (img?.fileName || "").toString(),
-                  width: Number(img?.width) || 0,
-                  height: Number(img?.height) || 0
-                }))
-              : base.slides.slide2.metricsImages
-          },
-          slide3: {
-            ...base.slides.slide3,
-            ...(f?.slides?.slide3 || {}),
-            title: (f?.slides?.slide3?.title || base.slides.slide3.title || "").toString(),
-            bottomBandColor: (f?.slides?.slide3?.bottomBandColor || base.slides.slide3.bottomBandColor || "#2F78A8").toString(),
-            columns: Array.isArray(f?.slides?.slide3?.columns)
-              ? f.slides.slide3.columns.map((c) => (c || "").toString())
-              : base.slides.slide3.columns,
-            rows: Array.isArray(f?.slides?.slide3?.rows)
-              ? f.slides.slide3.rows.map((r) => {
-                  // New format: array-of-cells
-                  if (Array.isArray(r)) return r.map((c) => (c || "").toString());
 
-                  // Legacy object format: map to standard 6 columns
-                  return [
-                    (r?.domain || "").toString(),
-                    (r?.subDomain || "").toString(),
-                    (r?.capability || "").toString(),
-                    (r?.talentPipeline || "").toString(),
-                    (r?.status || "").toString(),
-                    (r?.totalResourceCount || "").toString()
-                  ];
-                })
-              : base.slides.slide3.rows
-          },
-          slide4: {
-            ...base.slides.slide4,
-            ...(f?.slides?.slide4 || {}),
-            title: (f?.slides?.slide4?.title || base.slides.slide4.title || "").toString(),
-            bottomBandColor: (f?.slides?.slide4?.bottomBandColor || base.slides.slide4.bottomBandColor || "#2F78A8").toString(),
-            columns: Array.isArray(f?.slides?.slide4?.columns)
-              ? f.slides.slide4.columns.map((c) => (c || "").toString())
-              : base.slides.slide4.columns,
-            rows: Array.isArray(f?.slides?.slide4?.rows)
-              ? f.slides.slide4.rows.map((r) => {
-                  if (Array.isArray(r)) return r.map((c) => (c || "").toString());
+    // IMPORTANT:
+    // We intentionally do NOT use `createDefaultSkillFactory()` as a base during normalization,
+    // because that would effectively "seed" a default Skill Factory payload when any partial
+    // record exists (or when legacy data is missing some fields). This project must support
+    // zero factories and must never inject a default factory implicitly.
+    const normalized = safeFactories
+      .filter(Boolean)
+      .map((f) => {
+        const id = (f?.id || `sf_${Math.random().toString(16).slice(2)}`).toString();
 
-                  // Best-effort legacy object mapping
-                  return [
-                    (r?.domain || "").toString(),
-                    (r?.subDomain || "").toString(),
-                    (r?.capability || "").toString(),
-                    (r?.trainingSessions || r?.training || r?.feedback || "").toString(),
-                    (r?.rating || r?.scale || "").toString(),
-                    (r?.comments || "").toString()
-                  ];
-                })
-              : base.slides.slide4.rows
+        const slide1 = f?.slides?.slide1 || {};
+        const slide2 = f?.slides?.slide2 || {};
+        const slide3 = f?.slides?.slide3 || {};
+        const slide4 = f?.slides?.slide4 || {};
+
+        return {
+          ...f,
+          id,
+          slides: {
+            // Slide 1: normalize types, but do not inject default text.
+            slide1: {
+              ...slide1,
+              factoryName: (slide1?.factoryName || "").toString(),
+              sprintLabel: (slide1?.sprintLabel || "").toString(),
+              highlights: Array.isArray(slide1?.highlights) ? slide1.highlights.map((x) => (x ?? "").toString()) : [],
+              lowlights: Array.isArray(slide1?.lowlights) ? slide1.lowlights.map((x) => (x ?? "").toString()) : [],
+              teamMembers: Array.isArray(slide1?.teamMembers)
+                ? slide1.teamMembers.map((m) => ({
+                    name: (m?.name || "").toString(),
+                    role: (m?.role || "").toString()
+                  }))
+                : [],
+              prevWeekActivities: Array.isArray(slide1?.prevWeekActivities)
+                ? slide1.prevWeekActivities.map((x) => (x ?? "").toString())
+                : [],
+              currentWeekActivities: Array.isArray(slide1?.currentWeekActivities)
+                ? slide1.currentWeekActivities.map((x) => (x ?? "").toString())
+                : []
+            },
+
+            // Slide 2: image-only metrics. If none, empty array.
+            slide2: {
+              ...slide2,
+              metricsImages: Array.isArray(slide2?.metricsImages)
+                ? slide2.metricsImages.map((img) => ({
+                    objectUrl: (img?.objectUrl || "").toString(),
+                    fileName: (img?.fileName || "").toString(),
+                    width: Number(img?.width) || 0,
+                    height: Number(img?.height) || 0
+                  }))
+                : []
+            },
+
+            // Slide 3: table slide. Keep user content if present; otherwise empty-but-valid.
+            slide3: {
+              ...slide3,
+              title: (slide3?.title || "").toString(),
+              bottomBandColor: (slide3?.bottomBandColor || "#2F78A8").toString(),
+              columns: Array.isArray(slide3?.columns) ? slide3.columns.map((c) => (c || "").toString()) : [],
+              rows: Array.isArray(slide3?.rows)
+                ? slide3.rows.map((r) => {
+                    if (Array.isArray(r)) return r.map((c) => (c || "").toString());
+                    // Legacy object format: best-effort mapping
+                    return [
+                      (r?.domain || "").toString(),
+                      (r?.subDomain || "").toString(),
+                      (r?.capability || "").toString(),
+                      (r?.talentPipeline || "").toString(),
+                      (r?.status || "").toString(),
+                      (r?.totalResourceCount || "").toString()
+                    ];
+                  })
+                : []
+            },
+
+            // Slide 4: table slide. Keep user content if present; otherwise empty-but-valid.
+            slide4: {
+              ...slide4,
+              title: (slide4?.title || "").toString(),
+              bottomBandColor: (slide4?.bottomBandColor || "#2F78A8").toString(),
+              columns: Array.isArray(slide4?.columns) ? slide4.columns.map((c) => (c || "").toString()) : [],
+              rows: Array.isArray(slide4?.rows)
+                ? slide4.rows.map((r) => {
+                    if (Array.isArray(r)) return r.map((c) => (c || "").toString());
+                    return [
+                      (r?.domain || "").toString(),
+                      (r?.subDomain || "").toString(),
+                      (r?.capability || "").toString(),
+                      (r?.trainingSessions || r?.training || r?.feedback || "").toString(),
+                      (r?.rating || r?.scale || "").toString(),
+                      (r?.comments || "").toString()
+                    ];
+                  })
+                : []
+            }
           }
-        }
-      };
-    });
+        };
+      });
 
     return { factories: normalized };
   } catch (_e) {

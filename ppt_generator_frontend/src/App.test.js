@@ -183,3 +183,18 @@ test("top-bar Delete deletes Skill Factory Slide 1 (via modal) and keeps app sta
   // After deleting SF Slide 1, app should still render header Delete button.
   expect(screen.getByRole("button", { name: /Delete Slide|Delete Factory Slide/i })).toBeInTheDocument();
 });
+
+test("zero-factory state: no Skill Factory dropdown and mega-menu does not show Skill Factory group", async () => {
+  const user = userEvent.setup();
+  render(<App />);
+
+  // No Skill Factory jump dropdown should be rendered at all when empty.
+  expect(screen.queryByLabelText(/Jump to Skill Factory/i)).not.toBeInTheDocument();
+
+  // Open mega-menu and ensure there is no Skill Factory group row.
+  await openSlideMegaMenu(user);
+  const menu = screen.getByRole("menu", { name: /Slide selector/i });
+
+  // Group rows are buttons; we should not find any factory-like label.
+  expect(within(menu).queryByRole("button", { name: /Skill Factory/i })).not.toBeInTheDocument();
+});

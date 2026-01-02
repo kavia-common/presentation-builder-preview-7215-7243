@@ -58,14 +58,18 @@ export default function SlideMegaMenu({
     const g = [];
     g.push({ id: "global_cover", kind: "global_cover", label: "Global Cover" });
 
-    safeFactories.forEach((f, idx) => {
-      g.push({
-        id: `sf:${f.id}`,
-        kind: "skill_factory",
-        label: getFactoryDisplayName(f, idx + 1),
-        meta: { factoryId: f.id }
+    // IMPORTANT: hide Skill Factory grouping entirely when there are none.
+    // This avoids any “phantom/default factory” appearance in the navigation.
+    if (safeFactories.length > 0) {
+      safeFactories.forEach((f, idx) => {
+        g.push({
+          id: `sf:${f.id}`,
+          kind: "skill_factory",
+          label: getFactoryDisplayName(f, idx + 1),
+          meta: { factoryId: f.id }
+        });
       });
-    });
+    }
 
     g.push({ id: "normal_slides", kind: "normal", label: "Normal Slides" });
     g.push({ id: "global_last", kind: "global_last", label: "Global Last Page" });
