@@ -7,6 +7,7 @@ import SlidePreview from "./components/SlidePreview";
 import Toast from "./components/Toast";
 import PresentationPreviewModal from "./components/PresentationPreviewModal";
 import SlideMegaMenu from "./components/SlideMegaMenu";
+import ConfirmDialog from "./components/ConfirmDialog";
 
 import { createEmptySlide, validateSlides } from "./utils/slideModel";
 import { exportSlidesToPptx } from "./utils/pptExport";
@@ -193,6 +194,9 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [toast, setToast] = useState({ open: false, variant: "info", title: "", message: "", autoHideMs: 0 });
+
+  // Delete confirmation modal state (avoid unreliable window.confirm in some embedded browsers/previews).
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // Right pane divider: percentage width for preview (left) vs editor (right).
   const [splitPct, setSplitPct] = useLocalStorageState(LS_SPLIT_KEY, 50);
@@ -382,11 +386,19 @@ function App() {
 
 
   function parseSkillFactorySelection(id) {
-    if (typeof id !== "string") return null;
-    if (id.startsWith(SKILL_FACTORY_SLIDE1_PREFIX)) return { factoryId: id.slice(SKILL_FACTORY_SLIDE1_PREFIX.length), slideKey: "slide1" };
-    if (id.startsWith(SKILL_FACTORY_SLIDE2_PREFIX)) return { factoryId: id.slice(SKILL_FACTORY_SLIDE2_PREFIX.length), slideKey: "slide2" };
-    if (id.startsWith(SKILL_FACTORY_SLIDE3_PREFIX)) return { factoryId: id.slice(SKILL_FACTORY_SLIDE3_PREFIX.length), slideKey: "slide3" };
-    if (id.startsWith(SKILL_FACTORY_SLIDE4_PREFIX)) return { factoryId: id.slice(SKILL_FACTORY_SLIDE4_PREFIX.length), slideKey: "slide4" };
+    if (typeof id !== "string" || !id) return null;
+
+    const mk = (factoryId, slideKey) => {
+      const fid = (factoryId || "").trim();
+      if (!fid) return null;
+      if (!["slide1", "slide2", "slide3", "slide4"].includes(slideKey)) return null;
+      return { factoryId: fid, slideKey };
+    };
+
+    if (id.startsWith(SKILL_FACTORY_SLIDE1_PREFIX)) return mk(id.slice(SKILL_FACTORY_SLIDE1_PREFIX.length), "slide1");
+    if (id.startsWith(SKILL_FACTORY_SLIDE2_PREFIX)) return mk(id.slice(SKILL_FACTORY_SLIDE2_PREFIX.length), "slide2");
+    if (id.startsWith(SKILL_FACTORY_SLIDE3_PREFIX)) return mk(id.slice(SKILL_FACTORY_SLIDE3_PREFIX.length), "slide3");
+    if (id.startsWith(SKILL_FACTORY_SLIDE4_PREFIX)) return mk(id.slice(SKILL_FACTORY_SLIDE4_PREFIX.length), "slide4");
     return null;
   }
 
@@ -741,27 +753,30 @@ function App() {
   }, []);
 
   // PUBLIC_INTERFACE
-  const handleConfirmDelete = useCallback(() => {
+  const requestDelete = useCallback(() => {
     /**
-     * Confirm and delete the currently selected slide.
-     *
-     * Reliability notes:
-     * - We compute the "after delete" list + next selection from a consistent snapshot and then
-     *   apply state updates. For normal slides, we use a functional setSlides() to avoid stale
-     *   closures (common cause of intermittent delete failures when the user changes selection
-     *   quickly via the mega-menu).
-     *
-     * Rules:
-     * - Global Cover and Global Last Page are pinned and cannot be deleted.
-     * - Skill Factory selection deletes only the selected factory slide.
-     * - Normal slide selection deletes that slide and selects the closest valid neighbor.
-     * - Changes persist to localStorage and UI updates immediately.
+     * Open the in-app confirmation dialog for delete.
+     * (We do NOT delete here; the actual delete happens in `confirmDelete`.)
      */
+    if (deleteDisabled) return;
+    setConfirmDeleteOpen(true);
+  }, [deleteDisabled]);
+
+  const confirmDelete = useCallback(() => {
+    /**
+     * Perform the actual delete after user confirms in the in-app modal.
+     *
+     * Goals:
+     * - Works for normal slides and Skill Factory slides.
+     * - Always updates selection to the nearest valid neighbor.
+     * - UI updates immediately (state update + selection set from the same transition).
+     * - Persists to localStorage (normal slides + factories already persisted via useEffect;
+     *   normal slides also save immediately for extra reliability).
+     */
+    setConfirmDeleteOpen(false);
+
     if (deleteDisabled) return; // includes invalid selection / pinned slides
     if (typeof selectedId !== "string" || !selectedId) return;
-
-    const ok = window.confirm("Delete this slide? This cannot be undone.");
-    if (!ok) return;
 
     // --- Skill Factory deletion ---
     if (isSkillFactorySelection(selectedId)) {
@@ -770,18 +785,19 @@ function App() {
       const parsed = parseSkillFactorySelection(selectedId);
       if (!parsed?.factoryId || !parsed?.slideKey) return;
 
-      // Compute next factories synchronously from the current snapshot.
-      const nextFactories = factories
+      // Compute "after" deterministically from current snapshot.
+      const nextFactories = (Array.isArray(factories) ? factories : [])
         .map((f) => {
           if (f.id !== parsed.factoryId) return f;
+
           const nf = { ...f, slides: { ...(f.slides || {}) } };
 
           if (parsed.slideKey === "slide2") {
             nf.slides.slide2 = { ...(nf.slides.slide2 || {}), metricsImages: [] };
           } else {
-            const nextSlides = { ...(nf.slides || {}) };
-            delete nextSlides[parsed.slideKey];
-            nf.slides = nextSlides;
+            const nextSlidesObj = { ...(nf.slides || {}) };
+            delete nextSlidesObj[parsed.slideKey];
+            nf.slides = nextSlidesObj;
           }
 
           const remaining = ["slide1", "slide2", "slide3", "slide4"].some((k) => skillFactorySlideExists(nf, k));
@@ -793,12 +809,11 @@ function App() {
       const nextSel = resolveClosestNeighborSelection({ beforeList: before, afterList: after, deletedId: selectedId });
 
       deleteSkillFactorySlide(parsed.factoryId, parsed.slideKey);
-      setSelectedId(nextSel);
+      setSelectedId(nextSel || GLOBAL_COVER_ID);
       return;
     }
 
-    // --- Normal slide deletion (most common path) ---
-    // Compute and apply from a single functional update so we never depend on stale `slides`.
+    // --- Normal slide deletion ---
     setSlides((prevSlides) => {
       const safePrevSlides = Array.isArray(prevSlides) ? prevSlides : [];
       const isNormalSlide = safePrevSlides.some((s) => s?.id === selectedId);
@@ -823,8 +838,7 @@ function App() {
       let nextSel = resolveClosestNeighborSelection({ beforeList: before, afterList: after, deletedId: selectedId });
       if (createdSlide) nextSel = createdSlide.id;
 
-      // Update selection immediately based on the same state transition.
-      setSelectedId(nextSel);
+      setSelectedId(nextSel || GLOBAL_COVER_ID);
 
       // Persist immediately (in addition to the useEffect persistence).
       saveNormalSlidesToStorage(nextSlides);
@@ -891,6 +905,21 @@ function App() {
   return (
     <div className="appShell">
       <Toast toast={toast} onClose={() => setToast((t) => ({ ...t, open: false }))} />
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Delete slide?"
+        message={
+          isSkillFactorySelection(selectedId)
+            ? "This will remove the selected Skill Factory slide. This cannot be undone."
+            : "This will remove the selected slide. This cannot be undone."
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onCancel={() => setConfirmDeleteOpen(false)}
+        onConfirm={confirmDelete}
+      />
 
       <PresentationPreviewModal
         open={isPreviewOpen}
@@ -1032,7 +1061,7 @@ function App() {
             <button
               className="btn btnDanger"
               type="button"
-              onClick={handleConfirmDelete}
+              onClick={requestDelete}
               disabled={deleteDisabled}
               aria-disabled={deleteDisabled}
               aria-label={deleteLabel}

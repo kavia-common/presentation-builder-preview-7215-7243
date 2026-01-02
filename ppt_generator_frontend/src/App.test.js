@@ -82,15 +82,16 @@ test("top-bar Delete deletes a normal slide, updates selection, and persists to 
   expect(screen.getByRole("heading", { name: /^Editor$/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/Slide title/i)).toBeInTheDocument();
 
-  // Mock confirmation to accept deletion.
-  const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
-
   const deleteBtn = screen.getByRole("button", { name: /Delete Slide/i });
   expect(deleteBtn).toBeEnabled();
 
   await user.click(deleteBtn);
 
-  expect(confirmSpy).toHaveBeenCalledTimes(1);
+  // Confirm dialog should appear
+  const dialog = screen.getByRole("dialog", { name: /Delete slide\?/i });
+  expect(within(dialog).getByText(/cannot be undone/i)).toBeInTheDocument();
+
+  await user.click(within(dialog).getByRole("button", { name: /^Delete$/i }));
 
   // After deletion, selection should move to a neighboring slide.
   expect(screen.getByText(/^(Slide\s+\d+\s+—|Global Cover|Global Last Page)/i)).toBeInTheDocument();
@@ -118,11 +119,10 @@ test("regression: deleting a selected normal slide decreases count and changes s
   // Capture selection label before delete (the visible mega-menu label).
   const beforeLabel = screen.getByText(/^Slide\s+\d+\s+—/i).textContent;
 
-  // Confirm deletion.
-  jest.spyOn(window, "confirm").mockReturnValue(true);
-
-  // Delete from header.
+  // Delete from header -> confirm in modal.
   await user.click(screen.getByRole("button", { name: /Delete Slide/i }));
+  const dialog = screen.getByRole("dialog", { name: /Delete slide\?/i });
+  await user.click(within(dialog).getByRole("button", { name: /^Delete$/i }));
 
   // Persisted slide list should have decreased by 1 (3 -> 2).
   await waitFor(() => {
@@ -135,22 +135,22 @@ test("regression: deleting a selected normal slide decreases count and changes s
   expect(afterLabel).not.toEqual(beforeLabel);
 });
 
-test("top-bar Delete deletes Skill Factory Slide 1 (still works)", async () => {
+test("top-bar Delete deletes Skill Factory Slide 1 (via modal) and keeps app stable", async () => {
   const user = userEvent.setup();
   render(<App />);
 
   await user.click(screen.getByRole("button", { name: /Add Skill Factory/i }));
   expect(screen.getByRole("heading", { name: /Skill Factory – Slide 1/i })).toBeInTheDocument();
 
-  // Delete action is contextual for Skill Factory slides.
-  jest.spyOn(window, "confirm").mockReturnValue(true);
-
   const deleteBtn = screen.getByRole("button", { name: /Delete Factory Slide/i });
   expect(deleteBtn).toBeEnabled();
+
   await user.click(deleteBtn);
 
-  // After deleting SF Slide 1, the app should still render and Delete should no longer
-  // be in the "Delete Factory Slide" state (selection moves to a valid neighbor).
-  // The most stable assertion is that the header Delete button still exists.
+  const dialog = screen.getByRole("dialog", { name: /Delete slide\?/i });
+  expect(within(dialog).getByText(/Skill Factory slide/i)).toBeInTheDocument();
+  await user.click(within(dialog).getByRole("button", { name: /^Delete$/i }));
+
+  // After deleting SF Slide 1, app should still render header Delete button.
   expect(screen.getByRole("button", { name: /Delete Slide|Delete Factory Slide/i })).toBeInTheDocument();
 });
