@@ -56,17 +56,19 @@ export default function SlidePreview({
   const safeTotalSlides = Number.isFinite(totalSlides) && totalSlides > 0 ? totalSlides : 1;
 
   // Zoom state:
-  // We still expose manual zoom controls, but the LIVE preview must *always* be fully visible.
-  // Therefore we always compute an "auto-fit" scale based on BOTH width and height, and then
-  // additionally apply user zoom on top (without allowing overflow).
-  const [zoomIdx, setZoomIdx] = useState(() => nearestZoomIndex(0.9));
+  // - Default is AUTO-FIT (requested): scale is derived from BOTH width and height of the pane.
+  // - User may switch to manual zoom levels, but we still CLAMP to avoid overflow/cropping.
+  // - A dedicated "Fit" control returns to Auto-fit at any time.
+  const [zoomMode, setZoomMode] = useState("fit"); // "fit" | "manual"
+  const [zoomIdx, setZoomIdx] = useState(() => nearestZoomIndex(1));
 
   const wrapRef = useRef(null);
   const stageRef = useRef(null);
 
-  // If the component is remounted (e.g., switching selection), default to 90% zoom.
+  // If the component is remounted (e.g., switching selection), default to Auto-fit.
   useEffect(() => {
-    setZoomIdx(nearestZoomIndex(0.9));
+    setZoomMode("fit");
+    setZoomIdx(nearestZoomIndex(1));
   }, [mode, slide?.id, skillFactory?.id]);
 
   // Recompute on container resize/relayout by forcing a state tick.
@@ -122,39 +124,52 @@ export default function SlidePreview({
     return Math.max(0.25, Math.min(1.25, Number.isFinite(scale) ? scale : 1));
   }, [stageBox.w, stageBox.h]);
 
-  // Manual zoom multiplies the auto-fit scale, but we MUST clamp to avoid overflow.
   const manualScale = ZOOM_LEVELS[zoomIdx] || 1;
 
   const effectiveScale = useMemo(() => {
     const availW = stageBox.w;
     const availH = stageBox.h;
-    if (!availW || !availH) return manualScale;
 
     const baseW = 1280;
     const baseH = 720;
 
+    // If we can't measure, fall back to something safe.
+    if (!availW || !availH) {
+      return zoomMode === "manual" ? manualScale : 1;
+    }
+
     const maxAllowed = Math.min(availW / baseW, availH / baseH);
 
-    // Start with auto-fit then apply manual zoom, but never exceed available space.
-    const desired = autoFitScale * manualScale;
+    if (zoomMode === "fit") {
+      // True Auto-fit-by-width-and-height (uses the maximum available space without cropping).
+      return Math.max(0.25, Math.min(maxAllowed, autoFitScale));
+    }
 
-    return Math.max(0.25, Math.min(maxAllowed, desired));
-  }, [autoFitScale, manualScale, stageBox.w, stageBox.h]);
+    // Manual zoom: still clamp so the slide never overflows/crops.
+    return Math.max(0.25, Math.min(maxAllowed, manualScale));
+  }, [autoFitScale, manualScale, stageBox.w, stageBox.h, zoomMode]);
 
   const canZoomOut = zoomIdx > 0;
   const canZoomIn = zoomIdx < ZOOM_LEVELS.length - 1;
 
   const onZoomOut = () => {
+    setZoomMode("manual");
     setZoomIdx((i) => Math.max(0, i - 1));
   };
 
   const onZoomIn = () => {
+    setZoomMode("manual");
     setZoomIdx((i) => Math.min(ZOOM_LEVELS.length - 1, i + 1));
   };
 
+  const onZoomFit = () => {
+    setZoomMode("fit");
+  };
+
   const onZoomReset = () => {
-    // Reset defaults to 90% (requested).
-    setZoomIdx(nearestZoomIndex(0.9));
+    // Keep a "100%" convenience control; this switches to manual 100%.
+    setZoomMode("manual");
+    setZoomIdx(nearestZoomIndex(1));
   };
 
   // Empty state:
@@ -184,13 +199,29 @@ export default function SlidePreview({
 
   const ZoomControls = showChrome ? (
     <div className="pvZoom" aria-label="Preview zoom controls">
-      <button type="button" className="btn btnSmall btnGhost" onClick={onZoomOut} disabled={!canZoomOut} aria-disabled={!canZoomOut}>
+      <button
+        type="button"
+        className={`btn btnSmall ${zoomMode === "fit" ? "" : "btnGhost"}`}
+        onClick={onZoomFit}
+        title="Auto-fit (default)"
+      >
+        Fit
+      </button>
+
+      <button type="button" className="btn btnSmall btnGhost" onClick={onZoomOut} disabled={!canZoomOut} aria-disabled={!canZoomOut} title="Zoom out">
         −
       </button>
-      <button type="button" className="btn btnSmall btnGhost" onClick={onZoomReset} title="Reset to 90%">
-        90%
+
+      <button
+        type="button"
+        className={`btn btnSmall btnGhost ${zoomMode === "manual" ? "pvZoomActive" : ""}`}
+        onClick={onZoomReset}
+        title="Set to 100%"
+      >
+        100%
       </button>
-      <button type="button" className="btn btnSmall btnGhost" onClick={onZoomIn} disabled={!canZoomIn} aria-disabled={!canZoomIn}>
+
+      <button type="button" className="btn btnSmall btnGhost" onClick={onZoomIn} disabled={!canZoomIn} aria-disabled={!canZoomIn} title="Zoom in">
         +
       </button>
     </div>
@@ -209,7 +240,7 @@ export default function SlidePreview({
             </div>
             {ZoomControls}
           </div>
-          <p className="cardHint">Auto-fit (width + height) always on. Use zoom controls for detail.</p>
+          <p className="cardHint">Auto-fit (width + height) is the default. Use zoom controls for detail.</p>
         </div>
       ) : null}
 

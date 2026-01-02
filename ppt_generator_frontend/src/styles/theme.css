@@ -898,8 +898,9 @@ a{color:inherit}
   .pvBody{padding:10px}
 }
 
-/* Zoom controls unchanged */
+/* Zoom controls */
 .pvZoom{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.pvZoomActive{outline:2px solid rgba(37,99,235,0.28); outline-offset:1px}
 
 /*
   Unscaled box: keeps transform scaling from shifting/overflowing.
@@ -996,15 +997,24 @@ a{color:inherit}
   inset:0;
   background:rgba(17,24,39,0.55);
   display:flex;
-  align-items:center;
+
+  /* If modal is taller than viewport, keep it fully accessible via backdrop scrolling */
+  align-items:flex-start;
   justify-content:center;
+
   padding:12px;
   z-index:50;
-  overflow:hidden;
+
+  overflow-y:auto;
+  overflow-x:hidden;
 }
 .ppModal{
   width:min(1260px, calc(100vw - 24px));
-  height:min(820px, calc(100vh - 24px));
+
+  /* Never overflow the viewport */
+  max-height:calc(100vh - 24px);
+  height:auto;
+
   background:#fff;
   border-radius:18px;
   border:1px solid rgba(255,255,255,0.25);
