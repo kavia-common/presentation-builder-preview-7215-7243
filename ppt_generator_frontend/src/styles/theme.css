@@ -769,9 +769,13 @@ a{color:inherit}
   display:flex;
   flex-direction:column;
   min-height:0;
+  height:100%;
 }
 .splitPaneLeft .cardBody{
   min-height:0;
+  height:100%;
+  display:flex;
+  flex-direction:column;
 }
 
 .splitDivider{display:grid;place-items:center;cursor:col-resize;user-select:none}
@@ -843,59 +847,59 @@ a{color:inherit}
 .pvBody{
   /*
     Preview “stage” (LIVE PREVIEW PANE):
-    - Must always be fully visible in its pane (auto-fit by width + height).
-    - Must be centered (both axes) with no unused “corner anchoring”.
-    - Must never cause horizontal overflow or bleed into the editor pane.
+    - Fill the available pane (no unused space).
+    - Keep the slide perfectly centered.
+    - Scale using BOTH width+height constraints.
+    - Hard-clip so transforms never bleed into the editor.
   */
   min-width:0;
   min-height:0;
   width:100%;
   max-width:100%;
 
-  /* Give the preview a real, bounded viewport inside the split layout. */
+  /* Must provide a real measurement box for ResizeObserver + fit math */
   height:100%;
   max-height:100%;
 
-  /* Absolute hard clip so transform-scaled content cannot paint outside the pane */
+  /* Hard clip: prevents overlap into divider/editor */
   overflow:hidden;
   overflow-x:clip;
   overflow-y:hidden;
 
   background:rgba(17,24,39,0.04);
 
-  /* Padding provides a frame around the slide (and is accounted for via pvStage sizing) */
-  padding:14px;
+  /*
+    Remove padding so “Fit” truly uses all available space.
+    (Padding was the main cause of “unused space” reports.)
+  */
+  padding:0;
 
   border-radius:14px;
   border:1px solid rgba(17,24,39,0.08);
 
-  /* Prevent transform children from widening the page */
   contain:layout paint;
 
-  /* The body itself can be a simple box; pvStage handles strict centering */
-  display:block;
+  display:flex;
+  flex-direction:column;
 }
 
 /*
-  pvStage is the *true* available area for fitting/scaling:
-  - fills pvBody's inner box (after padding)
-  - centers the scaled canvas in both axes
-  - is what SlidePreview measures for fit-to-width+height
+  pvStage is the *true* available area for fitting/scaling.
+  It must occupy ALL remaining space (so stageRef height is correct)
+  and must strictly center the scaled 16:9 canvas.
 */
 .pvStage{
+  flex:1;
   width:100%;
   height:100%;
   min-width:0;
   min-height:0;
+
   display:grid;
   place-items:center;
+
   overflow:hidden;
   contain:layout paint;
-}
-
-/* Even tighter on small screens */
-@media (max-width: 720px){
-  .pvBody{padding:10px}
 }
 
 /* Zoom controls */
@@ -1096,10 +1100,17 @@ a{color:inherit}
   flex:1;
   min-height:0;
   min-width:0;
-  padding:10px;
+
+  /*
+    Remove padding so SlidePreview's Fit uses all available space in the modal too.
+    SlidePreview already handles its own clipping and centering; this frame should be a pure viewport.
+  */
+  padding:0;
+
   display:flex;
   align-items:stretch;
-  justify-content:center;
+  justify-content:stretch;
+
   overflow:hidden;
   max-width:100%;
 }
@@ -1116,6 +1127,7 @@ a{color:inherit}
 }
 .ppSlideCard{
   width:100%;
+  height:100%;
   max-width:100%;
   min-width:0;
   min-height:0;
