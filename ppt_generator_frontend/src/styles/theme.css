@@ -216,14 +216,38 @@ a{color:inherit}
 
 /* --- App layout v2: (updated) minimal top dropdown + right split preview/editor --- */
 
-/* Minimal header variant */
-.appHeader{padding:18px 0}
-.appHeaderMinimal{padding:10px 0}
-.headerInner{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+/* Minimal header variant (PPT site style) */
+.appHeader{
+  padding:18px 0;
+  background:transparent;
+}
+.appHeaderMinimal{
+  /* Compact + sticky header */
+  padding:8px 0;
+  position:sticky;
+  top:0;
+  z-index:60;
+  background:var(--ocean-bg);
+  border-bottom:1px solid rgba(17,24,39,0.08); /* subtle divider */
+  backdrop-filter:saturate(1.2) blur(4px);
+}
 
 /* Header toolbar: mega-menu + actions inline and responsive */
-.headerInnerMinimal{align-items:center;justify-content:flex-start;gap:12px}
-.headerToolbar{flex-wrap:wrap}
+.headerInner{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+.headerInnerMinimal{
+  align-items:center;
+  justify-content:flex-start;
+  gap:12px;
+}
+.headerToolbar{
+  flex-wrap:wrap;
+}
+
 .headerNav{
   display:flex;
   align-items:center;
@@ -231,6 +255,7 @@ a{color:inherit}
   min-width:0;
   flex:999 1 520px; /* prefer keeping mega-menu on first line */
 }
+
 .headerActions{
   display:flex;
   align-items:center;
@@ -241,8 +266,19 @@ a{color:inherit}
   justify-content:flex-end;
 }
 
-.topSlideSelectLabel{font-size:12px;font-weight:950;color:rgba(17,24,39,0.78)}
+.topSlideSelectLabel{
+  font-size:12px;
+  font-weight:950;
+  color:rgba(17,24,39,0.78)
+}
 .topSlideSelect{max-width:min(560px, 100%)}
+
+/* A11y: consistent, visible focus on primary interactive controls in the header */
+.headerActions .btn:focus,
+.smButton:focus{
+  outline:2px solid rgba(37,99,235,0.40);
+  outline-offset:2px;
+}
 
 /* Narrow widths: let actions drop below the menu (still usable) */
 @media (max-width: 720px){
