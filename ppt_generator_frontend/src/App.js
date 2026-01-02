@@ -29,6 +29,7 @@ const SKILL_FACTORY_SLIDE3_PREFIX = "__skill_factory_slide3__:";
 const SKILL_FACTORY_SLIDE4_PREFIX = "__skill_factory_slide4__:";
 
 const LS_SPLIT_KEY = "pptgen_right_split_pct_v1";
+const LS_NORMAL_SLIDES_KEY = "pptgen_normal_slides_v1";
 
 function makeTimestamp(d = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");
@@ -50,6 +51,63 @@ function safeFileBaseName(name) {
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
+}
+
+function safeParseJson(raw, fallback) {
+  if (raw == null) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch (_e) {
+    return fallback;
+  }
+}
+
+function loadNormalSlidesFromStorage() {
+  try {
+    const raw = window.localStorage.getItem(LS_NORMAL_SLIDES_KEY);
+    if (!raw) return null;
+    const parsed = safeParseJson(raw, null);
+    if (!Array.isArray(parsed)) return null;
+
+    // Normalize: ensure expected shape exists; keep unknown fields if present.
+    return parsed
+      .filter(Boolean)
+      .map((s) => ({
+        ...createEmptySlide(),
+        ...s,
+        id: (s?.id || `slide_${Math.random().toString(16).slice(2)}`).toString(),
+        title: (s?.title || "").toString(),
+        subtitle: (s?.subtitle || "").toString(),
+        bullets: Array.isArray(s?.bullets) ? s.bullets.map((b) => (b ?? "").toString()) : createEmptySlide().bullets,
+        theme: {
+          ...(createEmptySlide().theme || {}),
+          ...(s?.theme || {})
+        },
+        // Object URLs cannot be persisted; reset on load.
+        image: {
+          ...(createEmptySlide().image || {}),
+          ...(s?.image || {}),
+          objectUrl: ""
+        }
+      }));
+  } catch (_e) {
+    return null;
+  }
+}
+
+function saveNormalSlidesToStorage(slides) {
+  try {
+    const toSave = (Array.isArray(slides) ? slides : []).map((s) => ({
+      ...s,
+      image: {
+        ...(s?.image || {}),
+        objectUrl: "" // never persist objectUrl
+      }
+    }));
+    window.localStorage.setItem(LS_NORMAL_SLIDES_KEY, JSON.stringify(toSave));
+  } catch (_e) {
+    // ignore storage errors
+  }
 }
 
 /**
@@ -129,7 +187,7 @@ function App() {
     () => loadSkillFactoriesFromStorage() || createDefaultSkillFactoryState()
   );
 
-  const [slides, setSlides] = useState(() => [createEmptySlide()]);
+  const [slides, setSlides] = useState(() => loadNormalSlidesFromStorage() || [createEmptySlide()]);
   const [selectedId, setSelectedId] = useState(() => GLOBAL_COVER_ID);
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -183,6 +241,11 @@ function App() {
   useEffect(() => {
     saveSkillFactoriesToStorage(skillFactoriesState);
   }, [skillFactoriesState]);
+
+  // Persist normal slides (excluding object URLs).
+  useEffect(() => {
+    saveNormalSlidesToStorage(slides);
+  }, [slides]);
 
   // Keep selection valid if slides/factories change (e.g., delete).
   useEffect(() => {
@@ -323,6 +386,68 @@ function App() {
       return prev.filter((s) => s.id !== id);
     });
   };
+
+  function parseSkillFactorySelection(id) {
+    if (typeof id !== "string") return null;
+    if (id.startsWith(SKILL_FACTORY_SLIDE1_PREFIX)) return { factoryId: id.slice(SKILL_FACTORY_SLIDE1_PREFIX.length), slideKey: "slide1" };
+    if (id.startsWith(SKILL_FACTORY_SLIDE2_PREFIX)) return { factoryId: id.slice(SKILL_FACTORY_SLIDE2_PREFIX.length), slideKey: "slide2" };
+    if (id.startsWith(SKILL_FACTORY_SLIDE3_PREFIX)) return { factoryId: id.slice(SKILL_FACTORY_SLIDE3_PREFIX.length), slideKey: "slide3" };
+    if (id.startsWith(SKILL_FACTORY_SLIDE4_PREFIX)) return { factoryId: id.slice(SKILL_FACTORY_SLIDE4_PREFIX.length), slideKey: "slide4" };
+    return null;
+  }
+
+  function makeSkillFactorySelection(factoryId, slideKey) {
+    if (!factoryId || !slideKey) return null;
+    if (slideKey === "slide1") return `${SKILL_FACTORY_SLIDE1_PREFIX}${factoryId}`;
+    if (slideKey === "slide2") return `${SKILL_FACTORY_SLIDE2_PREFIX}${factoryId}`;
+    if (slideKey === "slide3") return `${SKILL_FACTORY_SLIDE3_PREFIX}${factoryId}`;
+    if (slideKey === "slide4") return `${SKILL_FACTORY_SLIDE4_PREFIX}${factoryId}`;
+    return null;
+  }
+
+  function skillFactorySlideExists(factory, slideKey) {
+    if (!factory) return false;
+    // Slide 2 exists only if it has any images; Slide 1/3/4 exist if the object exists.
+    if (slideKey === "slide2") return Array.isArray(factory?.slides?.slide2?.metricsImages) && factory.slides.slide2.metricsImages.length > 0;
+    return Boolean(factory?.slides?.[slideKey]);
+  }
+
+  const deleteSkillFactorySlide = useCallback((factoryId, slideKey) => {
+    /**
+     * Delete one specific slide within a factory:
+     * - slide1: delete slide1 object (if removed and nothing else remains, remove factory)
+     * - slide2: clear metricsImages (treat empty as deleted)
+     * - slide3/slide4: delete slide object
+     */
+    setSkillFactoriesState((prev) => {
+      const prevFactories = Array.isArray(prev?.factories) ? prev.factories : [];
+      const idx = prevFactories.findIndex((f) => f.id === factoryId);
+      if (idx < 0) return prev;
+
+      const f = prevFactories[idx];
+      const nextFactory = {
+        ...f,
+        slides: { ...(f.slides || {}) }
+      };
+
+      if (slideKey === "slide2") {
+        nextFactory.slides.slide2 = { ...(nextFactory.slides.slide2 || {}), metricsImages: [] };
+      } else {
+        // Remove the slide object
+        const nextSlides = { ...(nextFactory.slides || {}) };
+        delete nextSlides[slideKey];
+        nextFactory.slides = nextSlides;
+      }
+
+      // Determine if the factory has any remaining slides considered "present"
+      const remaining = ["slide1", "slide2", "slide3", "slide4"].some((k) => skillFactorySlideExists(nextFactory, k));
+      const nextFactories = remaining
+        ? prevFactories.map((ff) => (ff.id === factoryId ? nextFactory : ff))
+        : prevFactories.filter((ff) => ff.id !== factoryId);
+
+      return { factories: nextFactories };
+    });
+  }, []);
 
   const moveSlide = (from, to) => {
     setSlides((prev) => {
@@ -527,10 +652,18 @@ function App() {
   const deleteDisabled = useMemo(() => {
     if (isGenerating) return true;
     if (isCoverSelected || isLastSelected) return true; // pinned
-    // Skill Factory slides are deleted via "Delete group" (kept in editor); do not allow per-slide delete
-    if (isSkillFactorySelection(selectedId)) return true;
+
+    // Skill Factory per-slide delete is allowed (contextual rule).
+    if (isSkillFactorySelection(selectedId)) {
+      const parsed = parseSkillFactorySelection(selectedId);
+      if (!parsed?.factoryId || !parsed?.slideKey) return true;
+      const f = factories.find((ff) => ff.id === parsed.factoryId);
+      return !skillFactorySlideExists(f, parsed.slideKey);
+    }
+
+    // Normal slide requires selection.
     return !selectedSlide;
-  }, [isGenerating, isCoverSelected, isLastSelected, selectedId, selectedSlide]);
+  }, [isGenerating, isCoverSelected, isLastSelected, selectedId, selectedSlide, factories]);
 
   const deleteLabel = useMemo(() => {
     if (isSkillFactorySelection(selectedId)) return "Delete Factory Slide";
@@ -539,28 +672,140 @@ function App() {
 
   const deleteTitle = useMemo(() => {
     if (isCoverSelected || isLastSelected) return "Pinned slide (cannot be deleted)";
-    if (isSkillFactorySelection(selectedId)) return "Delete Skill Factory slides from the editor using “Delete group”";
+    if (isSkillFactorySelection(selectedId)) return "Delete the currently selected Skill Factory slide";
     if (!selectedSlide) return "No slide selected";
     return "Delete the currently selected slide";
   }, [isCoverSelected, isLastSelected, selectedId, selectedSlide]);
+
+  function buildOrderedSelectionList({ factoriesList, slidesList }) {
+    const out = [GLOBAL_COVER_ID];
+
+    (Array.isArray(factoriesList) ? factoriesList : []).forEach((f) => {
+      const fid = f.id;
+      out.push(`${SKILL_FACTORY_SLIDE1_PREFIX}${fid}`);
+      out.push(`${SKILL_FACTORY_SLIDE2_PREFIX}${fid}`);
+      out.push(`${SKILL_FACTORY_SLIDE3_PREFIX}${fid}`);
+      out.push(`${SKILL_FACTORY_SLIDE4_PREFIX}${fid}`);
+    });
+
+    (Array.isArray(slidesList) ? slidesList : []).forEach((s) => out.push(s.id));
+
+    out.push(GLOBAL_LAST_ID);
+    return out;
+  }
+
+  function resolveClosestNeighborSelection({ beforeList, afterList, deletedId }) {
+    const idxBefore = beforeList.findIndex((x) => x === deletedId);
+    if (idxBefore < 0) return afterList.includes(GLOBAL_COVER_ID) ? GLOBAL_COVER_ID : afterList[0] || GLOBAL_COVER_ID;
+
+    // Prefer previous in same group (Skill Factory group or Normal group), else next.
+    const deletedParsed = parseSkillFactorySelection(deletedId);
+    const isDeletedNormal = !deletedParsed && deletedId !== GLOBAL_COVER_ID && deletedId !== GLOBAL_LAST_ID;
+
+    // Helper: if candidate exists in afterList
+    const exists = (id) => afterList.includes(id);
+
+    if (deletedParsed) {
+      const fid = deletedParsed.factoryId;
+      const order = ["slide1", "slide2", "slide3", "slide4"];
+      const pos = order.indexOf(deletedParsed.slideKey);
+
+      // Previous in same factory
+      for (let p = pos - 1; p >= 0; p--) {
+        const cand = makeSkillFactorySelection(fid, order[p]);
+        if (cand && exists(cand)) return cand;
+      }
+
+      // Next in same factory
+      for (let n = pos + 1; n < order.length; n++) {
+        const cand = makeSkillFactorySelection(fid, order[n]);
+        if (cand && exists(cand)) return cand;
+      }
+    } else if (isDeletedNormal) {
+      // Previous normal slide
+      for (let p = idxBefore - 1; p >= 0; p--) {
+        const cand = beforeList[p];
+        if (cand && exists(cand) && !parseSkillFactorySelection(cand) && cand !== GLOBAL_COVER_ID && cand !== GLOBAL_LAST_ID) return cand;
+      }
+      // Next normal slide
+      for (let n = idxBefore + 1; n < beforeList.length; n++) {
+        const cand = beforeList[n];
+        if (cand && exists(cand) && !parseSkillFactorySelection(cand) && cand !== GLOBAL_COVER_ID && cand !== GLOBAL_LAST_ID) return cand;
+      }
+    }
+
+    // Fallback: previous neighbor in global order, else next, else cover.
+    for (let p = idxBefore - 1; p >= 0; p--) {
+      const cand = beforeList[p];
+      if (cand && exists(cand)) return cand;
+    }
+    for (let n = idxBefore + 1; n < beforeList.length; n++) {
+      const cand = beforeList[n];
+      if (cand && exists(cand)) return cand;
+    }
+    return exists(GLOBAL_COVER_ID) ? GLOBAL_COVER_ID : afterList[0] || GLOBAL_COVER_ID;
+  }
 
   // PUBLIC_INTERFACE
   const handleConfirmDelete = useCallback(() => {
     /**
      * Confirm and delete the currently selected slide.
-     * - Disabled for pinned slides (Global Cover / Global Last Page)
-     * - Disabled for Skill Factory slides (delete group instead)
+     * Behavior:
+     * 1) Skill Factory slide selected: delete only that specific slide; if factory has no slides left, remove factory.
+     * 2) Normal slide selected: delete that slide.
+     * 3) Delete disabled for Global Cover and Global Last Page.
+     *
+     * After deletion:
+     * - Select closest neighbor (prefer previous in same group, else next)
+     * - Mega-menu/preview/export auto-update via state.
+     * - Persist changes to localStorage.
      */
     if (deleteDisabled) return;
     if (!selectedId) return;
 
-    // For now use native confirm for minimal styling; can be replaced with custom modal later.
-    const ok = window.confirm("Delete this slide? This cannot be undone.");
+    const ok = window.confirm(`Delete this slide? This cannot be undone.`);
     if (!ok) return;
 
+    const before = buildOrderedSelectionList({ factoriesList: factories, slidesList: slides });
+
+    if (isSkillFactorySelection(selectedId)) {
+      const parsed = parseSkillFactorySelection(selectedId);
+      if (!parsed?.factoryId || !parsed?.slideKey) return;
+
+      // Mutate factories state (async), but we can compute the post-delete order synchronously.
+      // Build a simulated "after factories" list for selection resolution.
+      const nextFactories = factories
+        .map((f) => {
+          if (f.id !== parsed.factoryId) return f;
+          const nf = { ...f, slides: { ...(f.slides || {}) } };
+          if (parsed.slideKey === "slide2") {
+            nf.slides.slide2 = { ...(nf.slides.slide2 || {}), metricsImages: [] };
+          } else {
+            const nextSlides = { ...(nf.slides || {}) };
+            delete nextSlides[parsed.slideKey];
+            nf.slides = nextSlides;
+          }
+          const remaining = ["slide1", "slide2", "slide3", "slide4"].some((k) => skillFactorySlideExists(nf, k));
+          return remaining ? nf : null;
+        })
+        .filter(Boolean);
+
+      const after = buildOrderedSelectionList({ factoriesList: nextFactories, slidesList: slides });
+      const nextSel = resolveClosestNeighborSelection({ beforeList: before, afterList: after, deletedId: selectedId });
+
+      deleteSkillFactorySlide(parsed.factoryId, parsed.slideKey);
+      setSelectedId(nextSel);
+      return;
+    }
+
+    // Normal slide deletion
+    const afterSlides = slides.filter((s) => s.id !== selectedId);
+    const after = buildOrderedSelectionList({ factoriesList: factories, slidesList: afterSlides });
+    const nextSel = resolveClosestNeighborSelection({ beforeList: before, afterList: after, deletedId: selectedId });
+
     deleteSlide(selectedId);
-    setSelectedId(GLOBAL_COVER_ID);
-  }, [deleteDisabled, selectedId]);
+    setSelectedId(nextSel);
+  }, [deleteDisabled, selectedId, factories, slides, deleteSkillFactorySlide]);
 
   // Resizable divider handlers (preserved).
   const startDrag = (e) => {
