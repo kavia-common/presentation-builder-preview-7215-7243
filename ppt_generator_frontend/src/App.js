@@ -1010,19 +1010,6 @@ function App() {
           </div>
 
           <div className="navRight" aria-label="Presentation actions">
-            {/* Preview: lightweight nav item (still a button for correct semantics; styled as link) */}
-            <button
-              className="navAction"
-              type="button"
-              onClick={() => setIsPreviewOpen(true)}
-              disabled={isGenerating}
-              aria-disabled={isGenerating}
-              aria-label="Open preview"
-              title={isGenerating ? "Generating…" : "Open full-deck preview"}
-            >
-              Preview
-            </button>
-
             {/* Add Slide: lightweight nav item (still a button; styled as link) */}
             <button
               className="navAction"

@@ -22,6 +22,10 @@ body{
   /* Hard-stop global horizontal scrolling caused by nested transforms/long content */
   overflow-x:hidden;
 }
+
+/* Ensure media/long tokens never force the page wider than the viewport */
+img,svg,video,canvas{max-width:100%}
+pre,code{max-width:100%;overflow-x:auto}
 a{color:inherit}
 .container{
   max-width:1200px;
@@ -675,7 +679,7 @@ a{color:inherit}
   min-height:0;
 
   display:grid;
-  grid-template-columns:var(--splitPct, 50%) 10px 1fr;
+  grid-template-columns:minmax(0, var(--splitPct, 50%)) 10px minmax(0, 1fr);
   gap:0;
 
   /* Contain any internal overflow to the panes (not the page) */
