@@ -672,7 +672,12 @@ a{color:inherit}
 
 /* Split preview/editor with resizer preserved */
 .splitWrap{
-  /* Ensures the split NEVER forces the page wider than viewport */
+  /*
+    HARD CONTAINMENT RULES:
+    - Must never create horizontal overflow (even with transforms inside SlidePreview)
+    - Must remain side-by-side on desktop, stacked on smaller screens
+    - Must allow vertical scrolling per-pane without changing widths
+  */
   width:100%;
   max-width:100%;
   min-width:0;
@@ -682,31 +687,32 @@ a{color:inherit}
   grid-template-columns:minmax(0, var(--splitPct, 50%)) 10px minmax(0, 1fr);
   gap:0;
 
-  /* Contain any internal overflow to the panes (not the page) */
-  overflow:hidden;
+  overflow:hidden; /* nothing inside may widen the page */
+  contain:layout paint; /* prevent transform children from leaking layout */
 }
 
 /* Critical: allow grid children to shrink (prevents overflow from long forms/tables) */
 .splitPane{
   min-width:0;
   min-height:0;
+  max-width:100%;
 }
 
-/* Editor pane should scroll vertically (not page) when content is tall */
+/* Editor pane: vertical scroll allowed; never horizontal */
 .splitPaneRight{
   min-height:0;
+  max-width:100%;
   overflow-y:auto;
   overflow-x:hidden;
   overscroll-behavior:contain;
-
-  /* Helps avoid scroll chaining to the page */
   padding-bottom:2px;
 }
 
-/* Preview pane should not cause horizontal scroll; vertical scroll only when zoomed */
+/* Preview pane: allow vertical scrolling within preview area, never horizontal */
 .splitPaneLeft{
   min-height:0;
-  overflow:hidden; /* SlidePreview handles its own internal scroll */
+  max-width:100%;
+  overflow:hidden; /* SlidePreview.pvBody will scroll vertically */
 }
 
 .splitDivider{display:grid;place-items:center;cursor:col-resize;user-select:none}
@@ -714,16 +720,19 @@ a{color:inherit}
 .splitGrip{width:6px;height:46px;border-radius:999px;background:rgba(17,24,39,0.18)}
 .noSelect{user-select:none}
 
+/* Tighten overall vertical spacing a bit so both panes fit on common laptops */
+.gridMainSolo{gap:12px}
+.rightPane{gap:10px}
+
 /* On small screens stack preview above editor (divider hidden) */
 @media (max-width: 980px){
   .splitWrap{
     grid-template-columns:1fr;
-    gap:14px;
-    overflow:visible; /* allow normal document flow when stacked */
+    gap:12px;
+    overflow:visible; /* stacked layout should behave naturally */
+    contain:none;
   }
   .splitDivider{display:none}
-
-  /* When stacked, let page scroll naturally (editor will still scroll if very tall) */
   .splitPaneRight{max-height:none}
 }
 
@@ -765,29 +774,38 @@ a{color:inherit}
 /* --- SlidePreview fit-to-width wrapper --- */
 .pvBody{
   /*
-    Preview “stage”:
-    - centered 16:9 canvas
-    - fit-to-width (JS computes scale based on this element's width)
-    - no horizontal overflow ever (even when zoomed/manual scale)
+    Preview “stage” (LIVE PREVIEW PANE):
+    - Explicitly sized viewport that the 16:9 slide scales within
+    - Fit-to-width behavior is retained, but clamped by height as well
+    - Only vertical scrolling is allowed; never horizontal
   */
   min-width:0;
   min-height:0;
   width:100%;
   max-width:100%;
 
-  /* Contain scrolling inside preview stage */
   overflow-x:hidden;
   overflow-y:auto;
   overscroll-behavior:contain;
 
   background:rgba(17,24,39,0.04);
-  padding:18px;
+
+  /* Slightly tighter padding so preview+editor fit on laptop screens */
+  padding:12px;
 
   display:grid;
   place-items:center;
 
   border-radius:14px;
   border:1px solid rgba(17,24,39,0.08);
+
+  /* Prevent transform children from widening the page */
+  contain:layout paint;
+}
+
+/* Even tighter on small screens */
+@media (max-width: 720px){
+  .pvBody{padding:10px}
 }
 
 /* Zoom controls unchanged */
@@ -798,10 +816,13 @@ a{color:inherit}
   We also visually frame the slide like the screenshot (white panel with subtle border).
 */
 .pvScaled{
+  /*
+    Explicit base canvas size. We scale this box with transform, but the
+    parent (.pvBody) provides the viewport and clamps overflow.
+  */
   width:1280px;
   height:720px;
 
-  /* Keep transform from pushing layout wider */
   max-width:100%;
   max-height:100%;
 
@@ -816,8 +837,11 @@ a{color:inherit}
   border-radius:16px;
   box-shadow:0 12px 28px rgba(17,24,39,0.10);
 
-  /* Extra safety: never contribute to overflow calculations */
   overflow:hidden;
+
+  /* Stronger containment against transform-induced scrollbars */
+  contain:layout paint;
+  will-change:transform;
 }
 
 /* The actual slide surface */
@@ -887,32 +911,60 @@ a{color:inherit}
 .sf2Tile:hover .sf2TileRemove,.sf2Tile:focus-within .sf2TileRemove{opacity:1;pointer-events:auto}
 
 /* Presentation preview modal */
-.ppBackdrop{position:fixed;inset:0;background:rgba(17,24,39,0.55);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;overflow:hidden}
+.ppBackdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(17,24,39,0.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  /* Slightly tighter so modal fits on smaller viewports */
+  padding:12px;
+
+  z-index:50;
+
+  /* Never allow backdrop to scroll horizontally */
+  overflow:hidden;
+}
 .ppModal{
-  width:min(1260px, 96vw);
-  height:min(820px, 92vh);
+  /*
+    Modal must fully fit within viewport (no overflow off-screen):
+    - width clamped to viewport
+    - height clamped to viewport
+    - internal layout manages scrolling (no horizontal scroll)
+  */
+  width:min(1260px, calc(100vw - 24px));
+  height:min(820px, calc(100vh - 24px));
+
   background:#fff;
   border-radius:18px;
   border:1px solid rgba(255,255,255,0.25);
   box-shadow:0 26px 70px rgba(0,0,0,0.25);
+
   display:flex;
   flex-direction:column;
+
   overflow:hidden;
   min-width:0;
-
-  /* Guard against transformed children expanding layout */
   max-width:100%;
+
+  contain:layout paint;
 }
 
-/* Sticky header INSIDE the modal (toolbar stays visible; doesn't cause overflow) */
+/* Sticky, compact toolbar INSIDE the modal */
 .ppHeader{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:14px;
-  padding:14px 16px;
+  gap:12px;
+
+  /* compact */
+  padding:10px 12px;
+
   border-bottom:1px solid rgba(17,24,39,0.10);
   background:linear-gradient(180deg,rgba(37,99,235,0.06),rgba(255,255,255,1));
+
   min-width:0;
 
   position:sticky;
@@ -921,7 +973,7 @@ a{color:inherit}
 }
 .ppTitle{font-size:14px;font-weight:900}
 .ppSubTitle{margin-top:4px;font-size:12px;color:rgba(17,24,39,0.60)}
-.ppHeaderActions{display:flex;align-items:center;gap:10px;min-width:0}
+.ppHeaderActions{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap;justify-content:flex-end}
 .ppZoom{display:flex;align-items:center;gap:8px}
 .ppZoomLabel{font-size:12px;color:rgba(17,24,39,0.60);font-weight:800}
 
@@ -932,8 +984,8 @@ a{color:inherit}
   min-height:0;
   min-width:0;
 
-  /* absolutely no modal horizontal scrollbars */
-  overflow:hidden;
+  overflow:hidden; /* absolutely no modal horizontal scrollbars */
+  max-width:100%;
 }
 
 .ppThumbs{
@@ -946,8 +998,8 @@ a{color:inherit}
   overflow:hidden; /* ensures long labels can't widen the grid column */
 }
 .ppThumbsHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px;border-bottom:1px solid rgba(17,24,39,0.08)}
-.ppThumbsList{padding:12px;display:grid;gap:10px;overflow:auto;min-width:0}
-.ppThumb{border:1px solid rgba(17,24,39,0.12);border-radius:14px;background:#fff;padding:10px;display:grid;gap:6px;text-align:left;cursor:pointer;min-width:0;max-width:100%}
+.ppThumbsList{padding:10px;display:grid;gap:10px;overflow:auto;min-width:0;max-width:100%}
+.ppThumb{border:1px solid rgba(17,24,39,0.12);border-radius:14px;background:#fff;padding:10px;display:grid;gap:6px;text-align:left;cursor:pointer;min-width:0;max-width:100%;overflow:hidden}
 .ppThumbActive{outline:2px solid rgba(37,99,235,0.35);border-color:rgba(37,99,235,0.35)}
 .ppThumbNo{font-size:11px;font-weight:900;color:rgba(17,24,39,0.65)}
 .ppThumbLabel{font-size:12px;font-weight:900;color:rgba(17,24,39,0.85);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -984,18 +1036,28 @@ a{color:inherit}
   - No horizontal scroll ever (even with transforms/masonry)
 */
 .ppPreviewFrame{
+  /*
+    The preview viewport inside the modal:
+    - provides a real, clamped height for SlidePreview's fitScale (it reads .pvBody size)
+    - allows vertical scroll if needed
+    - never allows horizontal scroll
+  */
   flex:1;
   min-height:0;
   min-width:0;
-  padding:12px;
+
+  /* slightly tighter than before */
+  padding:10px;
 
   display:flex;
-  align-items:center;
+  align-items:stretch; /* let SlidePreview body take full available height */
   justify-content:center;
 
   overflow-y:auto;
   overflow-x:hidden;
   overscroll-behavior:contain;
+
+  max-width:100%;
 }
 
 /* These are legacy wrappers; keep them harmless and non-expanding */
@@ -1014,7 +1076,12 @@ a{color:inherit}
   width:100%;
   max-width:100%;
   min-width:0;
+  min-height:0;
   overflow:hidden;
+
+  /* Ensure SlidePreview's .pvBody can measure and fit by height */
+  display:flex;
+  flex-direction:column;
 }
 
 .ppFooterHint{
