@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * Build a grouped mega-menu style slide selector.
@@ -72,37 +72,40 @@ export default function SlideMegaMenu({
     return g;
   }, [safeFactories]);
 
-  function groupItemsFor(group) {
-    if (!group) return [];
+  const groupItemsFor = useCallback(
+    (group) => {
+      if (!group) return [];
 
-    if (group.kind === "global_cover") {
-      return [{ value: constants.GLOBAL_COVER_ID, label: "Global Cover" }];
-    }
+      if (group.kind === "global_cover") {
+        return [{ value: constants.GLOBAL_COVER_ID, label: "Global Cover" }];
+      }
 
-    if (group.kind === "global_last") {
-      return [{ value: constants.GLOBAL_LAST_ID, label: "Global Last Page" }];
-    }
+      if (group.kind === "global_last") {
+        return [{ value: constants.GLOBAL_LAST_ID, label: "Global Last Page" }];
+      }
 
-    if (group.kind === "normal") {
-      return safeSlides.map((s, idx) => {
-        const n = normalStartNo + idx;
-        const title = s?.title?.trim() ? s.title : `Untitled slide ${n}`;
-        return { value: s.id, label: `Slide ${n} — ${title}` };
-      });
-    }
+      if (group.kind === "normal") {
+        return safeSlides.map((s, idx) => {
+          const n = normalStartNo + idx;
+          const title = s?.title?.trim() ? s.title : `Untitled slide ${n}`;
+          return { value: s.id, label: `Slide ${n} — ${title}` };
+        });
+      }
 
-    if (group.kind === "skill_factory") {
-      const factoryId = group?.meta?.factoryId;
-      return [
-        { value: `${constants.SKILL_FACTORY_SLIDE1_PREFIX}${factoryId}`, label: "Slide 1" },
-        { value: `${constants.SKILL_FACTORY_SLIDE2_PREFIX}${factoryId}`, label: "Slide 2" },
-        { value: `${constants.SKILL_FACTORY_SLIDE3_PREFIX}${factoryId}`, label: "Slide 3" },
-        { value: `${constants.SKILL_FACTORY_SLIDE4_PREFIX}${factoryId}`, label: "Slide 4" }
-      ];
-    }
+      if (group.kind === "skill_factory") {
+        const factoryId = group?.meta?.factoryId;
+        return [
+          { value: `${constants.SKILL_FACTORY_SLIDE1_PREFIX}${factoryId}`, label: "Slide 1" },
+          { value: `${constants.SKILL_FACTORY_SLIDE2_PREFIX}${factoryId}`, label: "Slide 2" },
+          { value: `${constants.SKILL_FACTORY_SLIDE3_PREFIX}${factoryId}`, label: "Slide 3" },
+          { value: `${constants.SKILL_FACTORY_SLIDE4_PREFIX}${factoryId}`, label: "Slide 4" }
+        ];
+      }
 
-    return [];
-  }
+      return [];
+    },
+    [constants, normalStartNo, safeSlides]
+  );
 
   const selectedGroupIndexFromValue = useMemo(() => {
     if (value === constants.GLOBAL_COVER_ID) return 0;
@@ -136,10 +139,10 @@ export default function SlideMegaMenu({
     const items = groupItemsFor(g);
     const idx = items.findIndex((it) => it.value === value);
     return idx >= 0 ? idx : 0;
-  }, [groups, selectedGroupIndexFromValue, value]);
+  }, [groups, selectedGroupIndexFromValue, value, groupItemsFor]);
 
   const currentGroup = groups[groupIndex] || groups[0];
-  const currentItems = useMemo(() => groupItemsFor(currentGroup), [currentGroup, safeSlides, normalStartNo, constants]);
+  const currentItems = useMemo(() => groupItemsFor(currentGroup), [currentGroup, groupItemsFor]);
 
   const selectedLabel = useMemo(() => {
     // For the button label, prefer an informative label:

@@ -379,17 +379,7 @@ function App() {
     setSelectedId(newSlide.id);
   };
 
-  /**
-   * Delete a normal slide and revoke any associated Object URL.
-   * Note: selection + empty-state handling is managed by handleConfirmDelete.
-   */
-  const deleteSlide = (id) => {
-    setSlides((prev) => {
-      const toDelete = prev.find((s) => s.id === id);
-      if (toDelete?.image?.objectUrl) URL.revokeObjectURL(toDelete.image.objectUrl);
-      return prev.filter((s) => s.id !== id);
-    });
-  };
+
 
   function parseSkillFactorySelection(id) {
     if (typeof id !== "string") return null;
@@ -698,7 +688,7 @@ function App() {
     return out;
   }
 
-  function resolveClosestNeighborSelection({ beforeList, afterList, deletedId }) {
+  const resolveClosestNeighborSelection = useCallback(({ beforeList, afterList, deletedId }) => {
     const idxBefore = beforeList.findIndex((x) => x === deletedId);
     if (idxBefore < 0) return afterList.includes(GLOBAL_COVER_ID) ? GLOBAL_COVER_ID : afterList[0] || GLOBAL_COVER_ID;
 
@@ -748,7 +738,7 @@ function App() {
       if (cand && exists(cand)) return cand;
     }
     return exists(GLOBAL_COVER_ID) ? GLOBAL_COVER_ID : afterList[0] || GLOBAL_COVER_ID;
-  }
+  }, []);
 
   // PUBLIC_INTERFACE
   const handleConfirmDelete = useCallback(() => {
@@ -776,7 +766,7 @@ function App() {
 
     const before = buildOrderedSelectionList({ factoriesList: factories, slidesList: slides });
 
-    // --- Skill Factory deletion (keep existing behavior) ---
+    // --- Skill Factory deletion ---
     if (isSkillFactorySelection(selectedId)) {
       const parsed = parseSkillFactorySelection(selectedId);
       if (!parsed?.factoryId || !parsed?.slideKey) return;
@@ -807,40 +797,33 @@ function App() {
     }
 
     // --- Normal slide deletion ---
-    // Defensive: only treat as normal slide if it exists in current slides array.
     const isNormalSlide = slides.some((s) => s?.id === selectedId);
     if (!isNormalSlide) return;
 
-    // Build next slides list and guarantee non-empty normal slide state.
     const toDelete = slides.find((s) => s.id === selectedId);
     if (toDelete?.image?.objectUrl) URL.revokeObjectURL(toDelete.image.objectUrl);
 
     let nextSlides = slides.filter((s) => s.id !== selectedId);
 
-    // If no normal slides remain, create one immediately to keep UI stable.
     let createdSlide = null;
     if (nextSlides.length === 0) {
       createdSlide = createEmptySlide();
       nextSlides = [createdSlide];
     }
 
-    // Choose next selection based on the *actual* post-delete ordered list.
     const after = buildOrderedSelectionList({ factoriesList: factories, slidesList: nextSlides });
     let nextSel = resolveClosestNeighborSelection({ beforeList: before, afterList: after, deletedId: selectedId });
 
-    // If we created a replacement normal slide, prefer selecting it (requirement: avoid empty state crashes).
     if (createdSlide) nextSel = createdSlide.id;
 
-    // Apply updates in a predictable order:
-    // 1) set slides (updates preview/editor)
-    // 2) set selection (ensures editor points at a valid slide)
     setSlides(nextSlides);
     setSelectedId(nextSel);
 
-    // Persist immediately to localStorage for reliability (tests + UX).
-    // (We also keep the existing useEffect persistence as a secondary safety net.)
+    // Persist immediately (in addition to the useEffect persistence).
     saveNormalSlidesToStorage(nextSlides);
-  }, [deleteDisabled, selectedId, factories, slides, deleteSkillFactorySlide]);// Resizable divider handlers (preserved).
+  }, [deleteDisabled, selectedId, factories, slides, deleteSkillFactorySlide, resolveClosestNeighborSelection]);
+
+  // Resizable divider handlers (preserved).
   const startDrag = (e) => {
     e.preventDefault();
     dragStateRef.current.dragging = true;
@@ -1055,7 +1038,7 @@ function App() {
         <div className="container">
           <div className="gridMainSolo">
             <section className="rightPane" aria-label="Preview and editor" ref={rightPaneRef}>
-              <div className="splitWrap" ref={splitWrapRef} style={{ ["--splitPct"]: `${splitPct}%` }}>
+              <div className="splitWrap" ref={splitWrapRef} style={{ "--splitPct": `${splitPct}%` }}>
                 <div className="splitPane splitPaneLeft" aria-label="Preview pane">
                   <SlidePreview {...previewProps} />
                 </div>

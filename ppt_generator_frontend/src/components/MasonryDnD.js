@@ -34,7 +34,7 @@ export default function MasonryDnD({
   // Debounce reorder commits to parent (which persists to localStorage).
   const reorderTimerRef = useRef(null);
 
-  const safeItems = Array.isArray(items) ? items : [];
+  const safeItems = useMemo(() => (Array.isArray(items) ? items : []), [items]);
 
   const keys = useMemo(() => {
     return safeItems.map((it, idx) => String(getItemKey?.(it, idx) ?? idx));
