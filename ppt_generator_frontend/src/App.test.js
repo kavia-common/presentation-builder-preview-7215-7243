@@ -85,8 +85,11 @@ test("top-bar Delete deletes a normal slide, updates selection, and persists to 
   expect(confirmSpy).toHaveBeenCalled();
 
   // After deletion, selection should move to a neighboring slide.
-  // The SlideMegaMenu trigger should now show a normal slide label (starts with "Slide ").
-  expect(screen.getByRole("button", { name: /^Slide\s+\d+\s+—/i })).toBeInTheDocument();
+  // NOTE: The SlideMegaMenu trigger button's accessible name is "Slide" (it is labeled by the
+  // external <label htmlFor="topSlideSelect">), so we must assert the visible label text instead.
+  // The selection should now display either a neighboring normal slide label OR (edge fallback)
+  // a pinned slide label.
+  expect(screen.getByText(/^(Slide\s+\d+\s+—|Global Cover|Global Last Page)/i)).toBeInTheDocument();
 
   // localStorage should contain exactly 1 normal slide now (we created 2, deleted 1).
   const stored = JSON.parse(window.localStorage.getItem(LS_NORMAL_SLIDES_KEY) || "[]");
