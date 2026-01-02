@@ -260,6 +260,30 @@ a{color:inherit}
   white-space:nowrap;
 }
 
+/* Header brand as a clickable logo (keeps layout compact and consistent) */
+.navBrandButton{
+  appearance:none;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:4px 8px; /* slightly tighter for image */
+}
+.navBrandButton:hover{background:rgba(17,24,39,0.04)}
+.navBrandButton:focus{
+  outline:2px solid rgba(37,99,235,0.40);
+  outline-offset:2px;
+}
+
+.navLogo{
+  height:26px; /* sensible default ~24–28px */
+  width:auto;
+  display:block;
+  object-fit:contain;
+}
+
 .navItems{
   display:flex;
   align-items:center;

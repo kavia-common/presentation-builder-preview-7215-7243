@@ -916,9 +916,20 @@ function App() {
       <header className="appHeader appHeaderMinimal">
         <div className="container navBar" role="navigation" aria-label="Top navigation">
           <div className="navLeft">
-            <div className="navBrand" aria-label="Brand">
-              PPT Builder
-            </div>
+            <button
+              type="button"
+              className="navBrand navBrandButton"
+              aria-label="Go to Global Cover"
+              title="Global Cover"
+              onClick={() => {
+                setSelectedId(GLOBAL_COVER_ID);
+                window.requestAnimationFrame(() => {
+                  rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+                });
+              }}
+            >
+              <img className="navLogo" src="/assets/logo.png" alt="Tata Elxsi" />
+            </button>
 
             <div className="navItems">
               {/* Slides (mega): keep existing grouped mega-menu for slide selection */}
