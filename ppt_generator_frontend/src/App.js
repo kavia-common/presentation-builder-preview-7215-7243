@@ -386,10 +386,7 @@ function App() {
     setIsPreviewOpen(true);
   };
 
-  const onDirectExport = async () => {
-    // Secondary action: keep the legacy behavior available if users want one-click download.
-    await onDownloadFromPreview();
-  };
+
 
   const previewProps = useMemo(() => {
     const totalSlides = 2 + factories.length * 4 + slides.length; // cover + (sf1..sf4 per factory) + normal slides + last
@@ -648,18 +645,6 @@ function App() {
               title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Open presentation preview"}
             >
               {isGenerating ? "Generating…" : "Generate"}
-            </button>
-
-            <button
-              className="btn btnGhost"
-              type="button"
-              onClick={onDirectExport}
-              disabled={generateDisabled}
-              aria-disabled={generateDisabled}
-              aria-label="Download PPTX"
-              title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Directly generate and download without preview"}
-            >
-              Download
             </button>
           </div>
         </div>
