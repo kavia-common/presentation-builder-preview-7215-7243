@@ -55,16 +55,21 @@ export default function SlidePreview({
   const safeSlideIndex = Number.isFinite(slideIndex) ? slideIndex : 0;
   const safeTotalSlides = Number.isFinite(totalSlides) && totalSlides > 0 ? totalSlides : 1;
 
-  // Zoom state: default is fit-to-width.
-  const [zoomMode, setZoomMode] = useState("fit"); // "fit" | "manual"
-  const [zoomIdx, setZoomIdx] = useState(() => nearestZoomIndex(1));
+  // Zoom state:
+  // - Main live preview should default to 90% (manual).
+  // - Modal can keep Fit by passing showChrome={true} and relying on its own UX; we keep fit available.
+  // We treat showChrome as the signal for the main preview surface (it is true in both places),
+  // so instead we default to 90% generally, and the modal wrapper can switch to Fit via UI.
+  const [zoomMode, setZoomMode] = useState("manual"); // "fit" | "manual"
+  const [zoomIdx, setZoomIdx] = useState(() => nearestZoomIndex(0.9));
 
   const wrapRef = useRef(null);
 
-  // If the component is remounted (e.g., switching selection), keep fit-to-width by default.
+  // If the component is remounted (e.g., switching selection), default to 90% on the main live preview.
+  // This avoids accidental bleed/overlap risk at higher scales and matches user request.
   useEffect(() => {
-    setZoomMode("fit");
-    setZoomIdx(nearestZoomIndex(1));
+    setZoomMode("manual");
+    setZoomIdx(nearestZoomIndex(0.9));
   }, [mode, slide?.id, skillFactory?.id]);
 
   const fitScale = useMemo(() => {
@@ -123,8 +128,9 @@ export default function SlidePreview({
   };
 
   const onZoomReset = () => {
+    // Reset defaults to 90% (requested).
     setZoomMode("manual");
-    setZoomIdx(nearestZoomIndex(1));
+    setZoomIdx(nearestZoomIndex(0.9));
   };
 
   const onZoomFit = () => setZoomMode("fit");
@@ -159,8 +165,8 @@ export default function SlidePreview({
       <button type="button" className="btn btnSmall btnGhost" onClick={onZoomOut} disabled={!canZoomOut} aria-disabled={!canZoomOut}>
         −
       </button>
-      <button type="button" className="btn btnSmall btnGhost" onClick={onZoomReset} title="Reset to 100%">
-        100%
+      <button type="button" className="btn btnSmall btnGhost" onClick={onZoomReset} title="Reset to 90%">
+        90%
       </button>
       <button type="button" className="btn btnSmall btnGhost" onClick={onZoomIn} disabled={!canZoomIn} aria-disabled={!canZoomIn}>
         +

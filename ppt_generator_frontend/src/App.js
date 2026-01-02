@@ -860,12 +860,27 @@ function App() {
       if (!dragStateRef.current.dragging) return;
       const wrap = splitWrapRef.current;
       if (!wrap) return;
+
       const rect = wrap.getBoundingClientRect();
       const x = ev.clientX - rect.left;
-      const pct = (x / rect.width) * 100;
-      // Clamp split so Preview (left) is always 35%..60% of the split area.
-      // This guarantees the panes never overlap horizontally due to an extreme drag position.
-      setSplitPct(clamp(pct, 35, 60));
+
+      // Runtime guard:
+      // - Keep Preview between 35%..60% (requested).
+      // - Also ensure the Editor pane never drops below its hard min-width (320px).
+      //   This prevents any perceived overlap/collapse on narrower screens.
+      const width = Math.max(1, rect.width);
+      const dividerPx = 10; // matches CSS grid middle column
+      const editorMinPx = 320;
+
+      const minPctByClamp = 35;
+      const maxPctByClamp = 60;
+
+      // If the container is narrow, cap preview so editor can still be >= editorMinPx.
+      const maxPctByEditorMin = ((width - dividerPx - editorMinPx) / width) * 100;
+      const effectiveMax = clamp(maxPctByEditorMin, minPctByClamp, maxPctByClamp);
+
+      const pct = (x / width) * 100;
+      setSplitPct(clamp(pct, minPctByClamp, effectiveMax));
     };
 
     const onUp = () => {
