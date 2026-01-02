@@ -272,7 +272,7 @@ export default function PresentationPreviewModal({
             </div>
 
             <div className="ppPreviewFrame">
-              <div className="ppSlideCard">
+              <div className="ppSlideCard" style={{ minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
                 <SlidePreview
                   mode={
                     active.kind === "cover"
@@ -302,6 +302,7 @@ export default function PresentationPreviewModal({
                   }
                   slideIndex={activeIndex}
                   totalSlides={total}
+                  /* Keep existing controls/behavior; we only change containment */
                   showChrome
                 />
               </div>

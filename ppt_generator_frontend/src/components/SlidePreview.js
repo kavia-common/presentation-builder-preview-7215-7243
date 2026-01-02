@@ -75,20 +75,30 @@ export default function SlidePreview({
 
     const rect = el.getBoundingClientRect();
     const availW = Math.max(0, rect.width);
+    const availH = Math.max(0, rect.height);
 
-    // SlidePreview canvas sizes are governed by aspect-ratio; we scale based on width only.
-    // Base width is arbitrary; it matches the internal "unscaled" dimension used by our wrapper.
+    // SlidePreview uses a fixed 16:9 base canvas (1280x720) and a transform scale.
+    // To guarantee "never overflow", we must clamp the scale by BOTH:
+    // - available width (fit-to-width behavior)
+    // - available height (modal viewport safety)
     const baseW = 1280;
-    // Keep canvas off the edges of the framed preview stage (matches screenshot padding)
-    const margin = 36;
+    const baseH = 720;
 
-    const scale = (availW - margin) / baseW;
+    // Inner stage padding (matches screenshot spacing, prevents edges touching frame)
+    const marginX = 36;
+    const marginY = 36;
+
+    const scaleW = (availW - marginX) / baseW;
+    const scaleH = (availH - marginY) / baseH;
+
+    // Fit-to-width but never exceed available height; choose the smaller.
+    const scale = Math.min(scaleW, scaleH);
 
     // Clamp (avoid comically large on wide panes; avoid too small)
     return Math.max(0.35, Math.min(1.25, Number.isFinite(scale) ? scale : 1));
   }, [zoomMode]);
 
-  // Recompute fit on resize by forcing a state tick.
+  // Recompute fit on resize/relayout by forcing a state tick.
   const [, setResizeTick] = useState(0);
   useEffect(() => {
     if (zoomMode !== "fit") return;
