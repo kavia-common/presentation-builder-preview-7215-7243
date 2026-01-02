@@ -229,15 +229,16 @@ a{color:inherit}
   align-items:center;
   gap:10px;
   min-width:0;
-  flex:1 1 520px; /* allow nav to shrink before actions wrap */
+  flex:999 1 520px; /* prefer keeping mega-menu on first line */
 }
 .headerActions{
   display:flex;
   align-items:center;
   gap:10px;
-  flex:0 0 auto;
+  flex:1 1 360px;   /* allow actions to wrap sooner on narrow headers */
   margin-left:auto; /* push actions to the right on wide screens */
   flex-wrap:wrap;   /* allow buttons to wrap if needed */
+  justify-content:flex-end;
 }
 
 .topSlideSelectLabel{font-size:12px;font-weight:950;color:rgba(17,24,39,0.78)}

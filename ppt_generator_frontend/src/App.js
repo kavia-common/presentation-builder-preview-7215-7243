@@ -615,6 +615,30 @@ function App() {
 
           <div className="headerActions" aria-label="Presentation actions">
             <button
+              className="btn btnSecondary"
+              type="button"
+              onClick={addSlide}
+              disabled={isGenerating}
+              aria-disabled={isGenerating}
+              aria-label="Add slide"
+              title={isGenerating ? "Generating…" : "Add a new slide"}
+            >
+              + Add Slide
+            </button>
+
+            <button
+              className="btn btnGhost"
+              type="button"
+              onClick={addSkillFactory}
+              disabled={isGenerating}
+              aria-disabled={isGenerating}
+              aria-label="Add Skill Factory"
+              title={isGenerating ? "Generating…" : "Add Skill Factory group"}
+            >
+              + Add Skill Factory
+            </button>
+
+            <button
               className="btn"
               type="button"
               onClick={onGenerate}
@@ -705,118 +729,68 @@ function App() {
                     onSkillFactorySlide4Change={(patch) => selectedFactoryId && updateSkillFactorySlide4(selectedFactoryId, patch)}
                   />
 
-                  {/* Existing actions kept reachable (not in header). */}
-                  <section className="card" aria-label="Actions">
-                    <div className="cardHeader">
-                      <h2 className="cardTitle">Actions</h2>
-                      <p className="cardHint">Export, add slides, and manage groups.</p>
-                    </div>
-                    <div className="cardBody" style={{ display: "grid", gap: 10 }}>
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <button
-                          className="btn btnSecondary"
-                          type="button"
-                          onClick={addSlide}
-                          disabled={isGenerating}
-                          aria-disabled={isGenerating}
-                        >
-                          + Add slide
-                        </button>
+                  <div className={`helper ${canGenerate ? "" : "helperError"}`} role="status" aria-live="polite">
+                    {helperText}
+                  </div>
 
+                  {/* Minimal management helpers: keep behavior unchanged, but without the left hierarchy UI. */}
+                  {isSkillFactorySlide1Selected || isSkillFactorySlide2Selected || isSkillFactorySlide3Selected || isSkillFactorySlide4Selected ? (
+                    <section className="card" aria-label="Skill Factory management">
+                      <div className="cardBody" style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        <div className="badge">Skill Factory</div>
                         <button
-                          className="btn btnGhost"
                           type="button"
-                          onClick={addSkillFactory}
-                          disabled={isGenerating}
-                          aria-disabled={isGenerating}
-                          title="Add Skill Factory group"
+                          className="btn btnSmall btnDanger"
+                          onClick={() => selectedFactoryId && deleteSkillFactory(selectedFactoryId)}
+                          disabled={!selectedFactoryId}
+                          aria-disabled={!selectedFactoryId}
+                          title="Delete current Skill Factory group"
                         >
-                          + Skill Factory
-                        </button>
-
-                        <button
-                          className="btn"
-                          type="button"
-                          onClick={onGenerate}
-                          disabled={generateDisabled}
-                          aria-disabled={generateDisabled}
-                          title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Open presentation preview"}
-                        >
-                          {isGenerating ? "Generating…" : "Generate PPT"}
-                        </button>
-
-                        <button
-                          className="btn btnGhost"
-                          type="button"
-                          onClick={onDirectExport}
-                          disabled={generateDisabled}
-                          aria-disabled={generateDisabled}
-                          title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Directly generate and download without preview"}
-                        >
-                          Direct download
+                          Delete group
                         </button>
                       </div>
+                    </section>
+                  ) : null}
 
-                      <div className={`helper ${canGenerate ? "" : "helperError"}`} role="status" aria-live="polite">
-                        {helperText}
-                      </div>
-
-                      {/* Minimal management helpers: keep behavior unchanged, but without the left hierarchy UI. */}
-                      {isSkillFactorySlide1Selected || isSkillFactorySlide2Selected || isSkillFactorySlide3Selected || isSkillFactorySlide4Selected ? (
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                          <div className="badge">Skill Factory</div>
+                  {!isCoverSelected && !isLastSelected && !isSkillFactorySlide1Selected && !isSkillFactorySlide2Selected && !isSkillFactorySlide3Selected && !isSkillFactorySlide4Selected ? (
+                    <section className="card" aria-label="Normal slide management">
+                      <div className="cardBody" style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        <div className="badge">Normal slide</div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <button
+                            type="button"
+                            className="btn btnSmall btnGhost"
+                            onClick={() => selectedIndex >= 0 && moveSlide(selectedIndex, selectedIndex - 1)}
+                            disabled={selectedIndex <= 0}
+                            aria-disabled={selectedIndex <= 0}
+                            title={selectedIndex <= 0 ? "Already at top" : "Move up"}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btnSmall btnGhost"
+                            onClick={() => selectedIndex >= 0 && moveSlide(selectedIndex, selectedIndex + 1)}
+                            disabled={selectedIndex < 0 || selectedIndex >= slides.length - 1}
+                            aria-disabled={selectedIndex < 0 || selectedIndex >= slides.length - 1}
+                            title={selectedIndex >= slides.length - 1 ? "Already at bottom" : "Move down"}
+                          >
+                            ↓
+                          </button>
                           <button
                             type="button"
                             className="btn btnSmall btnDanger"
-                            onClick={() => selectedFactoryId && deleteSkillFactory(selectedFactoryId)}
-                            disabled={!selectedFactoryId}
-                            aria-disabled={!selectedFactoryId}
-                            title="Delete current Skill Factory group"
+                            onClick={() => selectedId && deleteSlide(selectedId)}
+                            disabled={!selectedSlide}
+                            aria-disabled={!selectedSlide}
+                            title="Delete slide"
                           >
-                            Delete group
+                            Delete
                           </button>
                         </div>
-                      ) : null}
-
-                      {!isCoverSelected && !isLastSelected && !isSkillFactorySlide1Selected && !isSkillFactorySlide2Selected && !isSkillFactorySlide3Selected && !isSkillFactorySlide4Selected ? (
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                          <div className="badge">Normal slide</div>
-                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <button
-                              type="button"
-                              className="btn btnSmall btnGhost"
-                              onClick={() => selectedIndex >= 0 && moveSlide(selectedIndex, selectedIndex - 1)}
-                              disabled={selectedIndex <= 0}
-                              aria-disabled={selectedIndex <= 0}
-                              title={selectedIndex <= 0 ? "Already at top" : "Move up"}
-                            >
-                              ↑
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btnSmall btnGhost"
-                              onClick={() => selectedIndex >= 0 && moveSlide(selectedIndex, selectedIndex + 1)}
-                              disabled={selectedIndex < 0 || selectedIndex >= slides.length - 1}
-                              aria-disabled={selectedIndex < 0 || selectedIndex >= slides.length - 1}
-                              title={selectedIndex >= slides.length - 1 ? "Already at bottom" : "Move down"}
-                            >
-                              ↓
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btnSmall btnDanger"
-                              onClick={() => selectedId && deleteSlide(selectedId)}
-                              disabled={!selectedSlide}
-                              aria-disabled={!selectedSlide}
-                              title="Delete slide"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  </section>
+                      </div>
+                    </section>
+                  ) : null}
 
                   <section className="card" aria-label="How to use">
                     <div className="cardHeader">
