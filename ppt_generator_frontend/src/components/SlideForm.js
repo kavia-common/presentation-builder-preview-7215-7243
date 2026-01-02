@@ -1591,7 +1591,7 @@ export default function SlideForm({
                 <input
                   id={titleId}
                   className="input"
-                  value={slide.title}
+                  value={(slide.title || "").toString()}
                   onChange={(e) => update({ title: e.target.value })}
                   placeholder="e.g., Quarterly Results"
                   required
@@ -1606,7 +1606,7 @@ export default function SlideForm({
                 <input
                   id={subtitleId}
                   className="input"
-                  value={slide.subtitle}
+                  value={(slide.subtitle || "").toString()}
                   onChange={(e) => update({ subtitle: e.target.value })}
                   placeholder="e.g., Highlights and next steps"
                 />
@@ -1618,7 +1618,7 @@ export default function SlideForm({
                     <div key={idx} className="formListRow">
                       <input
                         className="input"
-                        value={b}
+                        value={(b || "").toString()}
                         onChange={(e) => updateBullet(idx, e.target.value)}
                         placeholder={`Bullet ${idx + 1}`}
                         aria-label={`Bullet ${idx + 1}`}

@@ -5,8 +5,9 @@ import App from "./App";
 const LS_NORMAL_SLIDES_KEY = "pptgen_normal_slides_v1";
 
 function openSlideMegaMenu(user) {
-  // Default selection is Global Cover, so the trigger button is labeled "Global Cover".
-  return user.click(screen.getByRole("button", { name: /Global Cover/i }));
+  // SlideMegaMenu trigger is rendered as a <button> with accessible name "Slide"
+  // (the current selection label is nested content and isn't the button's name for AT).
+  return user.click(screen.getByRole("button", { name: /^Slide$/i }));
 }
 
 async function selectNormalSlideByIndex(user, idx0Based) {
