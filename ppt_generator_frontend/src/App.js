@@ -863,7 +863,9 @@ function App() {
       const rect = wrap.getBoundingClientRect();
       const x = ev.clientX - rect.left;
       const pct = (x / rect.width) * 100;
-      setSplitPct(clamp(pct, 28, 72)); // keep both panes usable
+      // Clamp split so Preview (left) is always 35%..60% of the split area.
+      // This guarantees the panes never overlap horizontally due to an extreme drag position.
+      setSplitPct(clamp(pct, 35, 60));
     };
 
     const onUp = () => {
@@ -1083,8 +1085,8 @@ function App() {
                   onMouseDown={startDrag}
                   onKeyDown={(e) => {
                     // Keyboard resize for accessibility
-                    if (e.key === "ArrowLeft") setSplitPct((p) => clamp(Number(p) - 2, 28, 72));
-                    if (e.key === "ArrowRight") setSplitPct((p) => clamp(Number(p) + 2, 28, 72));
+                    if (e.key === "ArrowLeft") setSplitPct((p) => clamp(Number(p) - 2, 35, 60));
+                    if (e.key === "ArrowRight") setSplitPct((p) => clamp(Number(p) + 2, 35, 60));
                   }}
                 >
                   <div className="splitGrip" aria-hidden="true" />

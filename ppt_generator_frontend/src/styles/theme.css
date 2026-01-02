@@ -690,6 +690,10 @@ a{color:inherit}
     - Must never create horizontal overflow (even with transforms inside SlidePreview)
     - Must remain side-by-side on desktop, stacked on smaller screens
     - Must allow vertical scrolling per-pane without changing widths
+
+    IMPORTANT: This split is resizable but CLAMPED so Preview never overlaps Editor:
+      Preview min: 35% of content width
+      Preview max: 60% of content width
   */
   width:100%;
   max-width:100%;
@@ -697,7 +701,14 @@ a{color:inherit}
   min-height:0;
 
   display:grid;
-  grid-template-columns:minmax(0, var(--splitPct, 50%)) 10px minmax(0, 1fr);
+  /*
+    Use minmax with percentage bounds so even if JS state is stale or a transform
+    tries to influence layout, the grid cannot allocate outside the allowed range.
+  */
+  grid-template-columns:
+    minmax(35%, var(--splitPct, 50%))
+    10px
+    minmax(0, 1fr);
   gap:0;
 
   overflow:hidden; /* nothing inside may widen the page */
@@ -737,7 +748,12 @@ a{color:inherit}
 .splitPaneLeft{
   min-height:0;
   max-width:100%;
-  overflow:hidden; /* SlidePreview.pvBody will scroll vertically */
+  /*
+    Critical: clip preview content so transform-scaled canvases cannot paint over the divider/editor.
+    (overflow:hidden is the key, but we also explicitly clip on modern browsers.)
+  */
+  overflow:hidden;
+  overflow-x:clip;
   display:flex;
   flex-direction:column;
 }
