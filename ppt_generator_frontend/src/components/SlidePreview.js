@@ -79,7 +79,8 @@ export default function SlidePreview({
     // SlidePreview canvas sizes are governed by aspect-ratio; we scale based on width only.
     // Base width is arbitrary; it matches the internal "unscaled" dimension used by our wrapper.
     const baseW = 1280;
-    const margin = 16; // keep padding from edges
+    // Keep canvas off the edges of the framed preview stage (matches screenshot padding)
+    const margin = 36;
 
     const scale = (availW - margin) / baseW;
 

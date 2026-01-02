@@ -623,52 +623,90 @@ a{color:inherit}
 
 /* --- SlidePreview fit-to-width wrapper --- */
 .pvBody{
-  /* Framed landscape preview with contained overflow (match screenshot) */
+  /*
+    Preview “stage” (the light-gray area behind the slide) should match the screenshot:
+    - fixed landscape frame feel
+    - centered slide
+    - subtle background + inner frame border
+    - no horizontal overflow
+  */
   min-width:0;
   min-height:0;
-  overflow:auto;
+
+  /* Prevent any horizontal scroll. Vertical scroll is fine when zoomed in. */
+  overflow-x:hidden;
+  overflow-y:auto;
   overscroll-behavior:contain;
 
-  /* Consistent inner padding so the canvas doesn't touch edges */
-  padding:12px;
+  /* Screenshot-like stage color */
+  background:rgba(17,24,39,0.04);
 
-  /* Center the scaled slide within the scrollable area */
+  /* Precise stage padding around the slide */
+  padding:18px;
+
+  /* Center the scaled slide */
   display:grid;
-  place-items:start center;
+  place-items:center;
+
+  /* Subtle inner frame */
+  border-radius:14px;
+  border:1px solid rgba(17,24,39,0.08);
 }
+
+/* Zoom controls unchanged */
 .pvZoom{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+
+/*
+  Unscaled box: keeps transform scaling from shifting/overflowing.
+  We also visually frame the slide like the screenshot (white panel with subtle border).
+*/
 .pvScaled{
   width:1280px;
   height:720px;
 
-  /* Keep scaling stable and prevent weird alignment */
   transform-origin:top center;
   transition:transform .12s ease;
 
-  /* Ensure we don't exceed the container width unexpectedly */
+  /* Keep it centered and avoid accidental overflow calculations */
+  display:grid;
+  place-items:center;
+
+  /* Frame styling behind the slide */
+  background:#fff;
+  border:1px solid rgba(17,24,39,0.10);
+  border-radius:16px;
+  box-shadow:0 12px 28px rgba(17,24,39,0.10);
+
+  /* Critical for no horizontal overflow while still fitting to width */
   max-width:100%;
 }
+
+/* The actual slide surface */
 .pvSlide{
   width:1280px;
   height:720px;
   max-width:100%;
   max-height:100%;
   overflow:hidden;
-  border-radius:16px; /* matches screenshot's rounded preview framing */
+  border-radius:16px;
 }
+
 /* Prevent images inside preview from forcing horizontal scroll */
 .pvBody img{max-width:100%}
 
-/* Presentation preview modal: allow SlidePreview to handle scaling inside card */
+/* Presentation preview modal: keep container padding consistent; SlidePreview does framing */
 .ppPreviewFrame{
   flex:1;
   min-height:0;
   min-width:0;
-  padding:12px;
+
+  /* Match screenshot spacing around the preview card inside the modal */
+  padding:14px;
+
   display:flex;
   flex-direction:column;
-  overflow:auto;
-  overscroll-behavior:contain;
+
+  overflow:hidden; /* SlidePreview handles scrolling now */
 }
 .ppSlideCard{
   min-width:0;
