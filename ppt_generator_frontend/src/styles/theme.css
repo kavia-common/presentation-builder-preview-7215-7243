@@ -701,6 +701,7 @@ a{color:inherit}
   min-height:0;
 
   display:grid;
+
   /*
     Use minmax with percentage bounds so even if JS state is stale or a transform
     tries to influence layout, the grid cannot allocate outside the allowed range.
@@ -709,10 +710,12 @@ a{color:inherit}
     minmax(35%, var(--splitPct, 50%))
     10px
     minmax(320px, 1fr); /* enforce editor min-width */
+
   gap:0;
 
-  overflow:hidden; /* nothing inside may widen the page */
-  contain:layout paint; /* prevent transform children from leaking layout */
+  /* Strict overflow control: nothing inside may widen the page or overlap siblings */
+  overflow:hidden;
+  contain:layout paint;
 }
 
 /* Critical: allow grid children to shrink (prevents overflow from long forms/tables) */
@@ -724,9 +727,9 @@ a{color:inherit}
 
 /*
   Give the split area a practical viewport-bound height so:
-  - live preview is visible (not pushed "below the fold" with no way to scroll inside)
-  - each pane can scroll internally as needed
-  - page can still scroll normally if content exceeds this
+  - live preview is visible
+  - editor scroll is independent
+  - the overall page can still scroll outside this region if needed
 */
 .rightPane{min-width:0}
 .splitWrap{
@@ -750,12 +753,12 @@ a{color:inherit}
   min-height:0;
   max-width:100%;
   position:relative;
-  /*
-    Critical: clip preview content so transform-scaled canvases cannot paint over the divider/editor.
-  */
+
+  /* Critical: clip preview content so transform-scaled canvases cannot paint over the divider/editor. */
   overflow:hidden;
   overflow-x:clip;
   overflow-y:hidden;
+
   display:flex;
   flex-direction:column;
   contain:layout paint;
@@ -780,17 +783,25 @@ a{color:inherit}
 .gridMainSolo{gap:12px}
 .rightPane{gap:10px}
 
-/* On small screens stack preview above editor (divider hidden) */
+/* Responsive stacking: Preview above Editor on narrow screens, keep landscape frame contained */
 @media (max-width: 980px){
   .splitWrap{
     grid-template-columns:1fr;
     gap:12px;
-    overflow:visible; /* stacked layout should behave naturally */
+
+    /* Still clamp to viewport width; but allow vertical growth naturally */
+    overflow:visible;
     contain:none;
     max-height:none;
   }
+
   .splitDivider{display:none}
-  .splitPaneRight{max-height:none}
+
+  /* In stacked mode, do NOT trap scrolling inside the editor pane; let page scroll naturally */
+  .splitPaneRight{
+    overflow-y:visible;
+    max-height:none;
+  }
 }
 
 /* --- Slide hierarchy (grouped, collapsible) --- */

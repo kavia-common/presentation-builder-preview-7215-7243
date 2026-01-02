@@ -1099,9 +1099,30 @@ function App() {
                   tabIndex={0}
                   onMouseDown={startDrag}
                   onKeyDown={(e) => {
-                    // Keyboard resize for accessibility
-                    if (e.key === "ArrowLeft") setSplitPct((p) => clamp(Number(p) - 2, 35, 60));
-                    if (e.key === "ArrowRight") setSplitPct((p) => clamp(Number(p) + 2, 35, 60));
+                    // Keyboard resize for accessibility.
+                    // Must follow the SAME clamps as drag:
+                    // - preview stays within 35%..60%
+                    // - plus a runtime cap so Editor never goes below 320px
+                    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+
+                    const wrap = splitWrapRef.current;
+                    const rect = wrap?.getBoundingClientRect?.();
+                    const width = Math.max(1, rect?.width || 0);
+
+                    const dividerPx = 10; // must match CSS grid middle column
+                    const editorMinPx = 320;
+
+                    const minPct = 35;
+                    const maxPct = 60;
+
+                    const maxPctByEditorMin = width
+                      ? ((width - dividerPx - editorMinPx) / width) * 100
+                      : maxPct;
+
+                    const effectiveMax = clamp(maxPctByEditorMin, minPct, maxPct);
+
+                    const delta = e.key === "ArrowLeft" ? -2 : 2;
+                    setSplitPct((p) => clamp(Number(p) + delta, minPct, effectiveMax));
                   }}
                 >
                   <div className="splitGrip" aria-hidden="true" />
