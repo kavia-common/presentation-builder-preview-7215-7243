@@ -357,10 +357,59 @@ a{color:inherit}
 
 /* A11y: consistent, visible focus on header controls (on dark background) */
 .navRight .btn:focus,
+.navRight .navAction:focus,
 .navSelect:focus,
 .smButton:focus{
   outline:2px solid rgba(255,255,255,0.60);
   outline-offset:2px;
+}
+
+/* Header nav actions: lightweight link-style controls (PPT-like), but remain <button> for correct semantics */
+.navAction{
+  appearance:none;
+  border:1px solid transparent;
+  background:transparent;
+  color:rgba(255,255,255,0.92);
+  font-weight:900;
+  font-size:13px;
+  letter-spacing:-.01em;
+
+  padding:7px 10px;
+  border-radius:12px;
+  cursor:pointer;
+
+  transition:background .12s ease, border-color .12s ease, transform .08s ease, opacity .15s ease;
+}
+.navAction:hover{
+  background:rgba(255,255,255,0.12);
+  border-color:rgba(255,255,255,0.18);
+}
+.navAction:active{transform:translateY(1px)}
+.navAction:disabled,
+.navAction[aria-disabled="true"]{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+/* Subtle emphasis for primary action (Generate) without becoming a filled button */
+.navActionEmphasis{
+  background:rgba(255,255,255,0.10);
+  border-color:rgba(255,255,255,0.22);
+}
+.navActionEmphasis:hover{
+  background:rgba(255,255,255,0.16);
+  border-color:rgba(255,255,255,0.28);
+}
+
+/* Keep Delete visibly destructive but still “nav-like” */
+.navActionDanger{
+  color:#fff;
+  background:rgba(239,68,68,0.22);
+  border-color:rgba(239,68,68,0.35);
+}
+.navActionDanger:hover{
+  background:rgba(239,68,68,0.28);
+  border-color:rgba(239,68,68,0.45);
 }
 
 /* Responsive tweaks */

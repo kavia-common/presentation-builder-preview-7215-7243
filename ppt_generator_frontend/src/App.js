@@ -1010,9 +1010,9 @@ function App() {
           </div>
 
           <div className="navRight" aria-label="Presentation actions">
-            {/* Preview: opens the full-deck preview modal */}
+            {/* Preview: lightweight nav item (still a button for correct semantics; styled as link) */}
             <button
-              className="btn btnGhost"
+              className="navAction"
               type="button"
               onClick={() => setIsPreviewOpen(true)}
               disabled={isGenerating}
@@ -1023,9 +1023,9 @@ function App() {
               Preview
             </button>
 
-            {/* Add Slide */}
+            {/* Add Slide: lightweight nav item (still a button; styled as link) */}
             <button
-              className="btn btnSecondary"
+              className="navAction"
               type="button"
               onClick={addSlide}
               disabled={isGenerating}
@@ -1036,9 +1036,9 @@ function App() {
               Add Slide
             </button>
 
-            {/* Add Skill Factory */}
+            {/* Add Skill Factory: keep consistent nav style */}
             <button
-              className="btn btnGhost"
+              className="navAction"
               type="button"
               onClick={addSkillFactory}
               disabled={isGenerating}
@@ -1049,9 +1049,9 @@ function App() {
               Add Skill Factory
             </button>
 
-            {/* Generate (same as current behavior: opens preview modal) */}
+            {/* Generate: keep existing behavior (opens preview modal), but use nav style */}
             <button
-              className="btn"
+              className="navAction navActionEmphasis"
               type="button"
               onClick={onGenerate}
               disabled={generateDisabled}
@@ -1062,9 +1062,9 @@ function App() {
               {isGenerating ? "Generating…" : "Generate"}
             </button>
 
-            {/* Delete: confirm + disabled for Global Cover/Last (existing logic) */}
+            {/* Delete: destructive action, still nav-styled but clearly dangerous */}
             <button
-              className="btn btnDanger"
+              className="navAction navActionDanger"
               type="button"
               onClick={requestDelete}
               disabled={deleteDisabled}
