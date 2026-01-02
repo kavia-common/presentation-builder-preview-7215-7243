@@ -93,10 +93,6 @@ test("top-bar Delete deletes a normal slide, updates selection, and persists to 
   expect(confirmSpy).toHaveBeenCalledTimes(1);
 
   // After deletion, selection should move to a neighboring slide.
-  // NOTE: The SlideMegaMenu trigger button's accessible name is "Slide" (it is labeled by the
-  // external <label htmlFor="topSlideSelect">), so we must assert the visible label text instead.
-  // The selection should now display either a neighboring normal slide label OR (edge fallback)
-  // a pinned slide label.
   expect(screen.getByText(/^(Slide\s+\d+\s+—|Global Cover|Global Last Page)/i)).toBeInTheDocument();
 
   // App starts with 1 normal slide by default.
@@ -106,6 +102,37 @@ test("top-bar Delete deletes a normal slide, updates selection, and persists to 
     expect(Array.isArray(stored)).toBe(true);
     expect(stored).toHaveLength(2);
   });
+});
+
+test("regression: deleting a selected normal slide decreases count and changes selection", async () => {
+  const user = userEvent.setup();
+  render(<App />);
+
+  // Create a stable scenario: start (1) + add 2 => 3 normal slides total.
+  await user.click(screen.getByRole("button", { name: /Add slide/i }));
+  await user.click(screen.getByRole("button", { name: /Add slide/i }));
+
+  // Select the *middle* normal slide so we can assert selection moves to a neighbor.
+  await selectNormalSlideByIndex(user, 1);
+
+  // Capture selection label before delete (the visible mega-menu label).
+  const beforeLabel = screen.getByText(/^Slide\s+\d+\s+—/i).textContent;
+
+  // Confirm deletion.
+  jest.spyOn(window, "confirm").mockReturnValue(true);
+
+  // Delete from header.
+  await user.click(screen.getByRole("button", { name: /Delete Slide/i }));
+
+  // Persisted slide list should have decreased by 1 (3 -> 2).
+  await waitFor(() => {
+    const stored = JSON.parse(window.localStorage.getItem(LS_NORMAL_SLIDES_KEY) || "[]");
+    expect(stored).toHaveLength(2);
+  });
+
+  // Selection should now show a different slide label (prefer previous, else next).
+  const afterLabel = screen.getByText(/^(Slide\s+\d+\s+—|Global Cover|Global Last Page)/i).textContent;
+  expect(afterLabel).not.toEqual(beforeLabel);
 });
 
 test("top-bar Delete deletes Skill Factory Slide 1 (still works)", async () => {
