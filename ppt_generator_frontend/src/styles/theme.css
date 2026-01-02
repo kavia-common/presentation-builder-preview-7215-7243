@@ -12,9 +12,25 @@
 
 /* Existing styles preserved in template; file overwritten here to include full theme rules used across app. */
 *{box-sizing:border-box}
-body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";background:var(--ocean-bg);color:var(--ocean-text)}
+html,body{width:100%;max-width:100%}
+body{
+  margin:0;
+  font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+  background:var(--ocean-bg);
+  color:var(--ocean-text);
+
+  /* Hard-stop global horizontal scrolling caused by nested transforms/long content */
+  overflow-x:hidden;
+}
 a{color:inherit}
-.container{max-width:1200px;margin:0 auto;padding:0 16px}
+.container{
+  max-width:1200px;
+  margin:0 auto;
+  padding:0 16px;
+
+  /* Allow the container itself to shrink without forcing overflow in grid columns */
+  min-width:0;
+}
 
 /* Buttons / inputs */
 .btn{appearance:none;border:1px solid rgba(37,99,235,0.22);background:var(--ocean-primary);color:#fff;border-radius:12px;padding:10px 12px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 6px 14px rgba(37,99,235,0.22);transition:transform .08s ease,box-shadow .15s ease,opacity .15s ease}
@@ -568,13 +584,78 @@ a{color:inherit}
   color:rgba(17,24,39,0.70);
 }
 
+/* --- Shell + main area clamp (prevents overflow regressions) --- */
+.appShell{
+  min-height:100vh;
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden; /* guard against accidental layout overflow */
+  display:flex;
+  flex-direction:column;
+}
+.appMain{
+  flex:1;
+  min-width:0;
+  width:100%;
+  max-width:100%;
+  overflow-x:clip; /* stronger than hidden in modern browsers, fallback is harmless */
+}
+
 /* New main layout (no left hierarchy rail) */
-.gridMainSolo{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}
-.rightPane{display:grid;gap:12px;align-content:start;min-width:0}
+.gridMainSolo{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:16px;
+  align-items:start;
+  min-width:0;
+}
+.rightPane{
+  display:grid;
+  gap:12px;
+  align-content:start;
+  min-width:0;
+  max-width:100%;
+}
 
 /* Split preview/editor with resizer preserved */
-.splitWrap{display:grid;grid-template-columns:var(--splitPct, 50%) 10px 1fr;gap:0;min-width:0;min-height:0}
-.splitPane{min-width:0;min-height:0}
+.splitWrap{
+  /* Ensures the split NEVER forces the page wider than viewport */
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  min-height:0;
+
+  display:grid;
+  grid-template-columns:var(--splitPct, 50%) 10px 1fr;
+  gap:0;
+
+  /* Contain any internal overflow to the panes (not the page) */
+  overflow:hidden;
+}
+
+/* Critical: allow grid children to shrink (prevents overflow from long forms/tables) */
+.splitPane{
+  min-width:0;
+  min-height:0;
+}
+
+/* Editor pane should scroll vertically (not page) when content is tall */
+.splitPaneRight{
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+
+  /* Helps avoid scroll chaining to the page */
+  padding-bottom:2px;
+}
+
+/* Preview pane should not cause horizontal scroll; vertical scroll only when zoomed */
+.splitPaneLeft{
+  min-height:0;
+  overflow:hidden; /* SlidePreview handles its own internal scroll */
+}
+
 .splitDivider{display:grid;place-items:center;cursor:col-resize;user-select:none}
 .splitDivider:focus{outline:2px solid rgba(37,99,235,0.35);border-radius:10px}
 .splitGrip{width:6px;height:46px;border-radius:999px;background:rgba(17,24,39,0.18)}
@@ -582,8 +663,15 @@ a{color:inherit}
 
 /* On small screens stack preview above editor (divider hidden) */
 @media (max-width: 980px){
-  .splitWrap{grid-template-columns:1fr;gap:14px}
+  .splitWrap{
+    grid-template-columns:1fr;
+    gap:14px;
+    overflow:visible; /* allow normal document flow when stacked */
+  }
   .splitDivider{display:none}
+
+  /* When stacked, let page scroll naturally (editor will still scroll if very tall) */
+  .splitPaneRight{max-height:none}
 }
 
 /* --- Slide hierarchy (grouped, collapsible) --- */
@@ -624,31 +712,27 @@ a{color:inherit}
 /* --- SlidePreview fit-to-width wrapper --- */
 .pvBody{
   /*
-    Preview “stage” (the light-gray area behind the slide) should match the screenshot:
-    - fixed landscape frame feel
-    - centered slide
-    - subtle background + inner frame border
-    - no horizontal overflow
+    Preview “stage”:
+    - centered 16:9 canvas
+    - fit-to-width (JS computes scale based on this element's width)
+    - no horizontal overflow ever (even when zoomed/manual scale)
   */
   min-width:0;
   min-height:0;
+  width:100%;
+  max-width:100%;
 
-  /* Prevent any horizontal scroll. Vertical scroll is fine when zoomed in. */
+  /* Contain scrolling inside preview stage */
   overflow-x:hidden;
   overflow-y:auto;
   overscroll-behavior:contain;
 
-  /* Screenshot-like stage color */
   background:rgba(17,24,39,0.04);
-
-  /* Precise stage padding around the slide */
   padding:18px;
 
-  /* Center the scaled slide */
   display:grid;
   place-items:center;
 
-  /* Subtle inner frame */
   border-radius:14px;
   border:1px solid rgba(17,24,39,0.08);
 }
@@ -664,21 +748,23 @@ a{color:inherit}
   width:1280px;
   height:720px;
 
+  /* Keep transform from pushing layout wider */
+  max-width:100%;
+  max-height:100%;
+
   transform-origin:top center;
   transition:transform .12s ease;
 
-  /* Keep it centered and avoid accidental overflow calculations */
   display:grid;
   place-items:center;
 
-  /* Frame styling behind the slide */
   background:#fff;
   border:1px solid rgba(17,24,39,0.10);
   border-radius:16px;
   box-shadow:0 12px 28px rgba(17,24,39,0.10);
 
-  /* Critical for no horizontal overflow while still fitting to width */
-  max-width:100%;
+  /* Extra safety: never contribute to overflow calculations */
+  overflow:hidden;
 }
 
 /* The actual slide surface */
