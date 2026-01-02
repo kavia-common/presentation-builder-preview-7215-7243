@@ -62,6 +62,7 @@ export default function SlidePreview({
   const [zoomIdx, setZoomIdx] = useState(() => nearestZoomIndex(0.9));
 
   const wrapRef = useRef(null);
+  const stageRef = useRef(null);
 
   // If the component is remounted (e.g., switching selection), default to 90% zoom.
   useEffect(() => {
@@ -71,11 +72,11 @@ export default function SlidePreview({
   // Recompute on container resize/relayout by forcing a state tick.
   const [layoutTick, setLayoutTick] = useState(0);
   useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
+    const wrap = wrapRef.current;
+    if (!wrap) return;
 
     const ro = new ResizeObserver(() => setLayoutTick((x) => x + 1));
-    ro.observe(el);
+    ro.observe(wrap);
 
     // Also respond to viewport changes.
     const onResize = () => setLayoutTick((x) => x + 1);
@@ -87,58 +88,58 @@ export default function SlidePreview({
     };
   }, []);
 
+  /**
+   * Compute the *inner* available space for the stage (after padding).
+   * This fixes the common “leftover empty space / corner anchoring” bug caused
+   * by measuring the wrong element (the padded wrapper instead of the actual stage).
+   */
+  const stageBox = useMemo(() => {
+    const stage = stageRef.current;
+    if (!stage) return { w: 0, h: 0 };
+
+    const rect = stage.getBoundingClientRect();
+    return {
+      w: Math.max(0, rect.width),
+      h: Math.max(0, rect.height)
+    };
+  }, [layoutTick]);
+
   const autoFitScale = useMemo(() => {
-    const el = wrapRef.current;
-    if (!el) return 1;
+    const availW = stageBox.w;
+    const availH = stageBox.h;
+    if (!availW || !availH) return 1;
 
-    const rect = el.getBoundingClientRect();
-    const availW = Math.max(0, rect.width);
-    const availH = Math.max(0, rect.height);
-
-    // Base 16:9 canvas size used by SlidePreview (matches CSS: 1280x720).
+    // Base 16:9 canvas size used by SlidePreview (matches pvScaled/pvSlide: 1280x720).
     const baseW = 1280;
     const baseH = 720;
 
-    // Inner padding inside pvBody (CSS). Keep in sync with theme.css (.pvBody padding).
-    // This prevents edges touching the frame and avoids 1px clipping due to rounding.
-    const paddingX = 24;
-    const paddingY = 24;
-
-    const scaleW = (availW - paddingX) / baseW;
-    const scaleH = (availH - paddingY) / baseH;
-
+    // Auto-fit must consider BOTH dimensions; pick the limiting factor.
+    const scaleW = availW / baseW;
+    const scaleH = availH / baseH;
     const scale = Math.min(scaleW, scaleH);
 
-    // Allow it to scale up a bit on large panes, but primarily keep it contained.
+    // Allow a small up-scale on large panes, but keep the canvas always fully visible.
     return Math.max(0.25, Math.min(1.25, Number.isFinite(scale) ? scale : 1));
-  }, [layoutTick]);
+  }, [stageBox.w, stageBox.h]);
 
   // Manual zoom multiplies the auto-fit scale, but we MUST clamp to avoid overflow.
   const manualScale = ZOOM_LEVELS[zoomIdx] || 1;
 
   const effectiveScale = useMemo(() => {
-    const el = wrapRef.current;
-    if (!el) return manualScale;
-
-    const rect = el.getBoundingClientRect();
-    const availW = Math.max(0, rect.width);
-    const availH = Math.max(0, rect.height);
+    const availW = stageBox.w;
+    const availH = stageBox.h;
+    if (!availW || !availH) return manualScale;
 
     const baseW = 1280;
     const baseH = 720;
 
-    const paddingX = 24;
-    const paddingY = 24;
-
-    const maxScaleW = (availW - paddingX) / baseW;
-    const maxScaleH = (availH - paddingY) / baseH;
-    const maxAllowed = Math.min(maxScaleW, maxScaleH);
+    const maxAllowed = Math.min(availW / baseW, availH / baseH);
 
     // Start with auto-fit then apply manual zoom, but never exceed available space.
     const desired = autoFitScale * manualScale;
 
     return Math.max(0.25, Math.min(maxAllowed, desired));
-  }, [autoFitScale, manualScale, layoutTick]);
+  }, [autoFitScale, manualScale, stageBox.w, stageBox.h]);
 
   const canZoomOut = zoomIdx > 0;
   const canZoomIn = zoomIdx < ZOOM_LEVELS.length - 1;
@@ -213,14 +214,15 @@ export default function SlidePreview({
       ) : null}
 
       <div className={showChrome ? "cardBody pvBody" : "pvBody"} ref={wrapRef}>
-        <div
-          className="pvScaled"
-          style={{
-            transform: `scale(${effectiveScale})`
-          }}
-        >
-          <div className="pvSlide">
-            {mode === "cover" ? (
+        <div className="pvStage" ref={stageRef}>
+          <div
+            className="pvScaled"
+            style={{
+              transform: `scale(${effectiveScale})`
+            }}
+          >
+            <div className="pvSlide">
+              {mode === "cover" ? (
               <div className="coverPreviewFrame">
                 <div className="coverPreviewBg">
                   {cover?.backgroundImage?.objectUrl ? (
@@ -730,6 +732,7 @@ export default function SlidePreview({
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>
