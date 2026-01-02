@@ -744,19 +744,18 @@ function App() {
   const handleConfirmDelete = useCallback(() => {
     /**
      * Confirm and delete the currently selected slide.
-     * Behavior:
-     * 1) Skill Factory slide selected: delete only that specific slide; if factory has no slides left, remove factory.
-     * 2) Normal slide selected: delete that slide.
-     * 3) Delete disabled for Global Cover and Global Last Page.
      *
-     * After deletion:
-     * - Select closest neighbor (prefer previous in same group, else next)
-     * - Mega-menu/preview/export auto-update via state.
-     * - Persist changes to localStorage.
+     * Reliability notes:
+     * - We compute the "after delete" list + next selection from a consistent snapshot and then
+     *   apply state updates. For normal slides, we use a functional setSlides() to avoid stale
+     *   closures (common cause of intermittent delete failures when the user changes selection
+     *   quickly via the mega-menu).
      *
-     * Defensive guarantees (normal slides):
-     * - If deletion would result in 0 normal slides, create a new empty slide and select it
-     *   (prevents empty-state crashes and keeps editor usable).
+     * Rules:
+     * - Global Cover and Global Last Page are pinned and cannot be deleted.
+     * - Skill Factory selection deletes only the selected factory slide.
+     * - Normal slide selection deletes that slide and selects the closest valid neighbor.
+     * - Changes persist to localStorage and UI updates immediately.
      */
     if (deleteDisabled) return; // includes invalid selection / pinned slides
     if (typeof selectedId !== "string" || !selectedId) return;
@@ -764,18 +763,19 @@ function App() {
     const ok = window.confirm("Delete this slide? This cannot be undone.");
     if (!ok) return;
 
-    const before = buildOrderedSelectionList({ factoriesList: factories, slidesList: slides });
-
     // --- Skill Factory deletion ---
     if (isSkillFactorySelection(selectedId)) {
+      const before = buildOrderedSelectionList({ factoriesList: factories, slidesList: slides });
+
       const parsed = parseSkillFactorySelection(selectedId);
       if (!parsed?.factoryId || !parsed?.slideKey) return;
 
-      // Mutate factories state (async), but compute post-delete order synchronously.
+      // Compute next factories synchronously from the current snapshot.
       const nextFactories = factories
         .map((f) => {
           if (f.id !== parsed.factoryId) return f;
           const nf = { ...f, slides: { ...(f.slides || {}) } };
+
           if (parsed.slideKey === "slide2") {
             nf.slides.slide2 = { ...(nf.slides.slide2 || {}), metricsImages: [] };
           } else {
@@ -783,6 +783,7 @@ function App() {
             delete nextSlides[parsed.slideKey];
             nf.slides = nextSlides;
           }
+
           const remaining = ["slide1", "slide2", "slide3", "slide4"].some((k) => skillFactorySlideExists(nf, k));
           return remaining ? nf : null;
         })
@@ -796,31 +797,40 @@ function App() {
       return;
     }
 
-    // --- Normal slide deletion ---
-    const isNormalSlide = slides.some((s) => s?.id === selectedId);
-    if (!isNormalSlide) return;
+    // --- Normal slide deletion (most common path) ---
+    // Compute and apply from a single functional update so we never depend on stale `slides`.
+    setSlides((prevSlides) => {
+      const safePrevSlides = Array.isArray(prevSlides) ? prevSlides : [];
+      const isNormalSlide = safePrevSlides.some((s) => s?.id === selectedId);
 
-    const toDelete = slides.find((s) => s.id === selectedId);
-    if (toDelete?.image?.objectUrl) URL.revokeObjectURL(toDelete.image.objectUrl);
+      // If selection is no longer a normal slide (due to rapid selection changes), do nothing.
+      if (!isNormalSlide) return prevSlides;
 
-    let nextSlides = slides.filter((s) => s.id !== selectedId);
+      const before = buildOrderedSelectionList({ factoriesList: factories, slidesList: safePrevSlides });
 
-    let createdSlide = null;
-    if (nextSlides.length === 0) {
-      createdSlide = createEmptySlide();
-      nextSlides = [createdSlide];
-    }
+      const toDelete = safePrevSlides.find((s) => s.id === selectedId);
+      if (toDelete?.image?.objectUrl) URL.revokeObjectURL(toDelete.image.objectUrl);
 
-    const after = buildOrderedSelectionList({ factoriesList: factories, slidesList: nextSlides });
-    let nextSel = resolveClosestNeighborSelection({ beforeList: before, afterList: after, deletedId: selectedId });
+      let nextSlides = safePrevSlides.filter((s) => s.id !== selectedId);
 
-    if (createdSlide) nextSel = createdSlide.id;
+      let createdSlide = null;
+      if (nextSlides.length === 0) {
+        createdSlide = createEmptySlide();
+        nextSlides = [createdSlide];
+      }
 
-    setSlides(nextSlides);
-    setSelectedId(nextSel);
+      const after = buildOrderedSelectionList({ factoriesList: factories, slidesList: nextSlides });
+      let nextSel = resolveClosestNeighborSelection({ beforeList: before, afterList: after, deletedId: selectedId });
+      if (createdSlide) nextSel = createdSlide.id;
 
-    // Persist immediately (in addition to the useEffect persistence).
-    saveNormalSlidesToStorage(nextSlides);
+      // Update selection immediately based on the same state transition.
+      setSelectedId(nextSel);
+
+      // Persist immediately (in addition to the useEffect persistence).
+      saveNormalSlidesToStorage(nextSlides);
+
+      return nextSlides;
+    });
   }, [deleteDisabled, selectedId, factories, slides, deleteSkillFactorySlide, resolveClosestNeighborSelection]);
 
   // Resizable divider handlers (preserved).
