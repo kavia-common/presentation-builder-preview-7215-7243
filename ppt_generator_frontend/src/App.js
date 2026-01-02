@@ -109,6 +109,16 @@ function buildSlideDropdownOptions({ factories, slides, globalCoverSlide, global
   return opts;
 }
 
+/** @returns {boolean} */
+function isSkillFactorySelection(selectedId) {
+  return (
+    selectedId?.startsWith(SKILL_FACTORY_SLIDE1_PREFIX) ||
+    selectedId?.startsWith(SKILL_FACTORY_SLIDE2_PREFIX) ||
+    selectedId?.startsWith(SKILL_FACTORY_SLIDE3_PREFIX) ||
+    selectedId?.startsWith(SKILL_FACTORY_SLIDE4_PREFIX)
+  );
+}
+
 // PUBLIC_INTERFACE
 function App() {
   /** Main UI entry point: top slide dropdown + side-by-side preview/editor + export (frontend-only). */
@@ -386,8 +396,6 @@ function App() {
     setIsPreviewOpen(true);
   };
 
-
-
   const previewProps = useMemo(() => {
     const totalSlides = 2 + factories.length * 4 + slides.length; // cover + (sf1..sf4 per factory) + normal slides + last
 
@@ -515,6 +523,45 @@ function App() {
 
   const generateDisabled = !canGenerate || isGenerating;
 
+  // Header Delete rules (pinned slides can't be deleted)
+  const deleteDisabled = useMemo(() => {
+    if (isGenerating) return true;
+    if (isCoverSelected || isLastSelected) return true; // pinned
+    // Skill Factory slides are deleted via "Delete group" (kept in editor); do not allow per-slide delete
+    if (isSkillFactorySelection(selectedId)) return true;
+    return !selectedSlide;
+  }, [isGenerating, isCoverSelected, isLastSelected, selectedId, selectedSlide]);
+
+  const deleteLabel = useMemo(() => {
+    if (isSkillFactorySelection(selectedId)) return "Delete Factory Slide";
+    return "Delete Slide";
+  }, [selectedId]);
+
+  const deleteTitle = useMemo(() => {
+    if (isCoverSelected || isLastSelected) return "Pinned slide (cannot be deleted)";
+    if (isSkillFactorySelection(selectedId)) return "Delete Skill Factory slides from the editor using “Delete group”";
+    if (!selectedSlide) return "No slide selected";
+    return "Delete the currently selected slide";
+  }, [isCoverSelected, isLastSelected, selectedId, selectedSlide]);
+
+  // PUBLIC_INTERFACE
+  const handleConfirmDelete = useCallback(() => {
+    /**
+     * Confirm and delete the currently selected slide.
+     * - Disabled for pinned slides (Global Cover / Global Last Page)
+     * - Disabled for Skill Factory slides (delete group instead)
+     */
+    if (deleteDisabled) return;
+    if (!selectedId) return;
+
+    // For now use native confirm for minimal styling; can be replaced with custom modal later.
+    const ok = window.confirm("Delete this slide? This cannot be undone.");
+    if (!ok) return;
+
+    deleteSlide(selectedId);
+    setSelectedId(GLOBAL_COVER_ID);
+  }, [deleteDisabled, selectedId]);
+
   // Resizable divider handlers (preserved).
   const startDrag = (e) => {
     e.preventDefault();
@@ -568,6 +615,7 @@ function App() {
 
   // Keep internal breadcrumbs "warm" (unused variable otherwise); other components may rely on the same memo logic pattern.
   void breadcrumbItems;
+  void handleDropdownChange;
 
   return (
     <div className="appShell">
@@ -610,19 +658,8 @@ function App() {
             />
           </div>
 
+          {/* Order required: [Mega-menu] | Add Skill Factory | Add Slide | Generate | Delete */}
           <div className="headerActions" aria-label="Presentation actions">
-            <button
-              className="btn btnSecondary"
-              type="button"
-              onClick={addSlide}
-              disabled={isGenerating}
-              aria-disabled={isGenerating}
-              aria-label="Add slide"
-              title={isGenerating ? "Generating…" : "Add a new slide"}
-            >
-              + Add Slide
-            </button>
-
             <button
               className="btn btnGhost"
               type="button"
@@ -636,6 +673,18 @@ function App() {
             </button>
 
             <button
+              className="btn btnSecondary"
+              type="button"
+              onClick={addSlide}
+              disabled={isGenerating}
+              aria-disabled={isGenerating}
+              aria-label="Add slide"
+              title={isGenerating ? "Generating…" : "Add a new slide"}
+            >
+              + Add Slide
+            </button>
+
+            <button
               className="btn"
               type="button"
               onClick={onGenerate}
@@ -645,6 +694,18 @@ function App() {
               title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Open presentation preview"}
             >
               {isGenerating ? "Generating…" : "Generate"}
+            </button>
+
+            <button
+              className="btn btnDanger"
+              type="button"
+              onClick={handleConfirmDelete}
+              disabled={deleteDisabled}
+              aria-disabled={deleteDisabled}
+              aria-label={deleteLabel}
+              title={deleteTitle}
+            >
+              {deleteLabel}
             </button>
           </div>
         </div>
@@ -737,6 +798,7 @@ function App() {
                     </section>
                   ) : null}
 
+                  {/* Normal slide management: keep reordering controls, remove redundant delete (Delete now in header). */}
                   {!isCoverSelected && !isLastSelected && !isSkillFactorySlide1Selected && !isSkillFactorySlide2Selected && !isSkillFactorySlide3Selected && !isSkillFactorySlide4Selected ? (
                     <section className="card" aria-label="Normal slide management">
                       <div className="cardBody" style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -761,16 +823,6 @@ function App() {
                             title={selectedIndex >= slides.length - 1 ? "Already at bottom" : "Move down"}
                           >
                             ↓
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btnSmall btnDanger"
-                            onClick={() => selectedId && deleteSlide(selectedId)}
-                            disabled={!selectedSlide}
-                            aria-disabled={!selectedSlide}
-                            title="Delete slide"
-                          >
-                            Delete
                           </button>
                         </div>
                       </div>
