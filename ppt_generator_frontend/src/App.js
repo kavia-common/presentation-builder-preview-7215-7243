@@ -17,6 +17,7 @@ import {
   createDefaultSkillFactory,
   createDefaultSkillFactoryState,
   loadSkillFactoriesFromStorage,
+  sanitizeSkillFactoriesInStorage,
   saveSkillFactoriesToStorage,
   upsertSkillFactory
 } from "./utils/skillFactoryModel";
@@ -181,6 +182,13 @@ function isSkillFactorySelection(selectedId) {
 // PUBLIC_INTERFACE
 function App() {
   /** Main UI entry point: top slide dropdown + side-by-side preview/editor + export (frontend-only). */
+
+  // One-time localStorage cleanup: remove any legacy default Skill Factory seed data.
+  // Must run BEFORE initial hydration so UI starts with zero factories after refresh.
+  useEffect(() => {
+    sanitizeSkillFactoriesInStorage();
+  }, []);
+
   const [globalCoverSlide, setGlobalCoverSlide] = useState(() => loadCoverFromStorage() || createDefaultCover());
   const [globalLastSlide, setGlobalLastSlide] = useState(() => loadLastSlideFromStorage() || createDefaultLastSlide());
 
