@@ -843,7 +843,7 @@ a{color:inherit}
 .pvBody{
   /*
     Preview “stage” (LIVE PREVIEW PANE):
-    - Must always be fully visible in its pane and scroll vertically if needed.
+    - Must always be fully visible in its pane (auto-fit by width + height).
     - Must never cause horizontal overflow (even with transform scaling).
   */
   min-width:0;
@@ -858,8 +858,8 @@ a{color:inherit}
   overflow:hidden; /* critical: clip any scaled content */
   background:rgba(17,24,39,0.04);
 
-  /* Slightly tighter padding so preview+editor fit on laptop screens */
-  padding:12px;
+  /* Slightly larger padding to avoid 1px edge clipping due to transform rounding */
+  padding:14px;
 
   display:grid;
   place-items:center;

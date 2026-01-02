@@ -56,25 +56,38 @@ export default function SlidePreview({
   const safeTotalSlides = Number.isFinite(totalSlides) && totalSlides > 0 ? totalSlides : 1;
 
   // Zoom state:
-  // - Main live preview should default to 90% (manual).
-  // - Modal can keep Fit by passing showChrome={true} and relying on its own UX; we keep fit available.
-  // We treat showChrome as the signal for the main preview surface (it is true in both places),
-  // so instead we default to 90% generally, and the modal wrapper can switch to Fit via UI.
-  const [zoomMode, setZoomMode] = useState("manual"); // "fit" | "manual"
+  // We still expose manual zoom controls, but the LIVE preview must *always* be fully visible.
+  // Therefore we always compute an "auto-fit" scale based on BOTH width and height, and then
+  // additionally apply user zoom on top (without allowing overflow).
   const [zoomIdx, setZoomIdx] = useState(() => nearestZoomIndex(0.9));
 
   const wrapRef = useRef(null);
 
-  // If the component is remounted (e.g., switching selection), default to 90% on the main live preview.
-  // This avoids accidental bleed/overlap risk at higher scales and matches user request.
+  // If the component is remounted (e.g., switching selection), default to 90% zoom.
   useEffect(() => {
-    setZoomMode("manual");
     setZoomIdx(nearestZoomIndex(0.9));
   }, [mode, slide?.id, skillFactory?.id]);
 
-  const fitScale = useMemo(() => {
-    if (zoomMode !== "fit") return 1;
+  // Recompute on container resize/relayout by forcing a state tick.
+  const [layoutTick, setLayoutTick] = useState(0);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
 
+    const ro = new ResizeObserver(() => setLayoutTick((x) => x + 1));
+    ro.observe(el);
+
+    // Also respond to viewport changes.
+    const onResize = () => setLayoutTick((x) => x + 1);
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  const autoFitScale = useMemo(() => {
     const el = wrapRef.current;
     if (!el) return 1;
 
@@ -82,58 +95,66 @@ export default function SlidePreview({
     const availW = Math.max(0, rect.width);
     const availH = Math.max(0, rect.height);
 
-    // SlidePreview uses a fixed 16:9 base canvas (1280x720) and a transform scale.
-    // To guarantee "never overflow", we must clamp the scale by BOTH:
-    // - available width (fit-to-width behavior)
-    // - available height (modal viewport safety)
+    // Base 16:9 canvas size used by SlidePreview (matches CSS: 1280x720).
     const baseW = 1280;
     const baseH = 720;
 
-    // Inner stage padding (matches screenshot spacing, prevents edges touching frame)
-    const marginX = 36;
-    const marginY = 36;
+    // Inner padding inside pvBody (CSS). Keep in sync with theme.css (.pvBody padding).
+    // This prevents edges touching the frame and avoids 1px clipping due to rounding.
+    const paddingX = 24;
+    const paddingY = 24;
 
-    const scaleW = (availW - marginX) / baseW;
-    const scaleH = (availH - marginY) / baseH;
+    const scaleW = (availW - paddingX) / baseW;
+    const scaleH = (availH - paddingY) / baseH;
 
-    // Fit-to-width but never exceed available height; choose the smaller.
     const scale = Math.min(scaleW, scaleH);
 
-    // Clamp (avoid comically large on wide panes; avoid too small)
-    return Math.max(0.35, Math.min(1.25, Number.isFinite(scale) ? scale : 1));
-  }, [zoomMode]);
+    // Allow it to scale up a bit on large panes, but primarily keep it contained.
+    return Math.max(0.25, Math.min(1.25, Number.isFinite(scale) ? scale : 1));
+  }, [layoutTick]);
 
-  // Recompute fit on resize/relayout by forcing a state tick.
-  const [, setResizeTick] = useState(0);
-  useEffect(() => {
-    if (zoomMode !== "fit") return;
-    const onResize = () => setResizeTick((x) => x + 1);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [zoomMode]);
+  // Manual zoom multiplies the auto-fit scale, but we MUST clamp to avoid overflow.
+  const manualScale = ZOOM_LEVELS[zoomIdx] || 1;
 
-  const effectiveScale = zoomMode === "fit" ? fitScale : ZOOM_LEVELS[zoomIdx] || 1;
+  const effectiveScale = useMemo(() => {
+    const el = wrapRef.current;
+    if (!el) return manualScale;
+
+    const rect = el.getBoundingClientRect();
+    const availW = Math.max(0, rect.width);
+    const availH = Math.max(0, rect.height);
+
+    const baseW = 1280;
+    const baseH = 720;
+
+    const paddingX = 24;
+    const paddingY = 24;
+
+    const maxScaleW = (availW - paddingX) / baseW;
+    const maxScaleH = (availH - paddingY) / baseH;
+    const maxAllowed = Math.min(maxScaleW, maxScaleH);
+
+    // Start with auto-fit then apply manual zoom, but never exceed available space.
+    const desired = autoFitScale * manualScale;
+
+    return Math.max(0.25, Math.min(maxAllowed, desired));
+  }, [autoFitScale, manualScale, layoutTick]);
 
   const canZoomOut = zoomIdx > 0;
   const canZoomIn = zoomIdx < ZOOM_LEVELS.length - 1;
 
   const onZoomOut = () => {
-    setZoomMode("manual");
     setZoomIdx((i) => Math.max(0, i - 1));
   };
 
   const onZoomIn = () => {
-    setZoomMode("manual");
     setZoomIdx((i) => Math.min(ZOOM_LEVELS.length - 1, i + 1));
   };
 
   const onZoomReset = () => {
     // Reset defaults to 90% (requested).
-    setZoomMode("manual");
     setZoomIdx(nearestZoomIndex(0.9));
   };
-
-  const onZoomFit = () => setZoomMode("fit");
 
   // Empty state:
   const needsNormalSlide = mode === "slide";
@@ -171,9 +192,6 @@ export default function SlidePreview({
       <button type="button" className="btn btnSmall btnGhost" onClick={onZoomIn} disabled={!canZoomIn} aria-disabled={!canZoomIn}>
         +
       </button>
-      <button type="button" className="btn btnSmall btnGhost" onClick={onZoomFit} aria-pressed={zoomMode === "fit"} title="Fit to width">
-        Fit
-      </button>
     </div>
   ) : null;
 
@@ -190,7 +208,7 @@ export default function SlidePreview({
             </div>
             {ZoomControls}
           </div>
-          <p className="cardHint">Fit-to-width by default. Use zoom controls for detail.</p>
+          <p className="cardHint">Auto-fit (width + height) always on. Use zoom controls for detail.</p>
         </div>
       ) : null}
 
