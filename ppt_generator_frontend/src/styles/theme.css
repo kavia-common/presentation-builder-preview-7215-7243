@@ -216,13 +216,44 @@ a{color:inherit}
 
 /* --- App layout v2: (updated) minimal top dropdown + right split preview/editor --- */
 
-/* Minimal header variant (dropdown-only) */
+/* Minimal header variant */
 .appHeader{padding:18px 0}
 .appHeaderMinimal{padding:10px 0}
 .headerInner{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
-.headerInnerMinimal{align-items:center;justify-content:flex-start;gap:10px}
+
+/* Header toolbar: mega-menu + actions inline and responsive */
+.headerInnerMinimal{align-items:center;justify-content:flex-start;gap:12px}
+.headerToolbar{flex-wrap:wrap}
+.headerNav{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+  flex:1 1 520px; /* allow nav to shrink before actions wrap */
+}
+.headerActions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex:0 0 auto;
+  margin-left:auto; /* push actions to the right on wide screens */
+  flex-wrap:wrap;   /* allow buttons to wrap if needed */
+}
+
 .topSlideSelectLabel{font-size:12px;font-weight:950;color:rgba(17,24,39,0.78)}
 .topSlideSelect{max-width:min(560px, 100%)}
+
+/* Narrow widths: let actions drop below the menu (still usable) */
+@media (max-width: 720px){
+  .headerActions{margin-left:0}
+  .headerNav{flex:1 1 100%}
+}
+
+/* Extra-small: make buttons comfortable to tap without crowding */
+@media (max-width: 520px){
+  .headerActions{width:100%}
+  .headerActions .btn{flex:1 1 160px}
+}
 
 /* --- Top slide mega-menu (grouped selector) --- */
 .smRoot{position:relative;display:inline-block;max-width:min(720px, 100%);width:100%}

@@ -589,27 +589,55 @@ function App() {
         fileNameHint={buildSuggestedFileName()}
       />
 
-      {/* Minimal header: dropdown only (per requirements). */}
+      {/* Header: slide selector + primary actions inline (responsive). */}
       <header className="appHeader appHeaderMinimal">
-        <div className="container headerInner headerInnerMinimal">
-          <label className="topSlideSelectLabel" htmlFor="topSlideSelect">
-            Slide
-          </label>
+        <div className="container headerInner headerInnerMinimal headerToolbar">
+          <div className="headerNav">
+            <label className="topSlideSelectLabel" htmlFor="topSlideSelect">
+              Slide
+            </label>
 
-          <SlideMegaMenu
-            id="topSlideSelect"
-            value={dropdownValue}
-            factories={factories}
-            slides={slides}
-            onChange={(next) => {
-              if (!next) return;
-              // Keep the exact same selection + scroll behavior as the old <select>.
-              setSelectedId(next);
-              window.requestAnimationFrame(() => {
-                rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
-              });
-            }}
-          />
+            <SlideMegaMenu
+              id="topSlideSelect"
+              value={dropdownValue}
+              factories={factories}
+              slides={slides}
+              onChange={(next) => {
+                if (!next) return;
+                // Keep the exact same selection + scroll behavior as the old <select>.
+                setSelectedId(next);
+                window.requestAnimationFrame(() => {
+                  rightPaneRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+                });
+              }}
+            />
+          </div>
+
+          <div className="headerActions" aria-label="Presentation actions">
+            <button
+              className="btn"
+              type="button"
+              onClick={onGenerate}
+              disabled={generateDisabled}
+              aria-disabled={generateDisabled}
+              aria-label="Generate presentation"
+              title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Open presentation preview"}
+            >
+              {isGenerating ? "Generating…" : "Generate"}
+            </button>
+
+            <button
+              className="btn btnGhost"
+              type="button"
+              onClick={onDirectExport}
+              disabled={generateDisabled}
+              aria-disabled={generateDisabled}
+              aria-label="Download PPTX"
+              title={generateDisabled ? (isGenerating ? "Generating…" : helperText) : "Directly generate and download without preview"}
+            >
+              Download
+            </button>
+          </div>
         </div>
       </header>
 
