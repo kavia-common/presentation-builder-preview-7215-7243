@@ -67,7 +67,35 @@ test("can add a Skill Factory and opens its Slide 1 editor", async () => {
   expect(screen.getByLabelText(/Sprint label \/ date/i)).toBeInTheDocument();
 });
 
-test("top-bar Delete deletes a normal slide, updates selection, and persists to localStorage", async () => {
+test("deleting the only normal slide results in zero normal slides and falls back to Global Cover", async () => {
+  const user = userEvent.setup();
+  render(<App />);
+
+  // Add a single normal slide (app starts with 0 now).
+  await user.click(screen.getByRole("button", { name: /Add slide/i }));
+
+  // Select it via the mega menu (Normal Slides -> first).
+  await selectNormalSlideByIndex(user, 0);
+
+  // Delete from header -> confirm in modal.
+  await user.click(screen.getByRole("button", { name: /Delete Slide/i }));
+  const dialog = screen.getByRole("dialog", { name: /Delete slide\?/i });
+  await user.click(within(dialog).getByRole("button", { name: /^Delete$/i }));
+
+  // Persisted slides should be empty.
+  await waitFor(() => {
+    const stored = JSON.parse(window.localStorage.getItem(LS_NORMAL_SLIDES_KEY) || "[]");
+    expect(stored).toHaveLength(0);
+  });
+
+  // Selection should be a sensible fallback: Global Cover.
+  expect(screen.getByText(/^Global Cover$/i)).toBeInTheDocument();
+
+  // App remains stable: Preview button is still present/enabled state coherent.
+  expect(screen.getByRole("button", { name: /Open preview/i })).toBeInTheDocument();
+});
+
+test("deleting a normal slide when multiple exist updates selection and persists", async () => {
   const user = userEvent.setup();
   render(<App />);
 
@@ -93,15 +121,14 @@ test("top-bar Delete deletes a normal slide, updates selection, and persists to 
 
   await user.click(within(dialog).getByRole("button", { name: /^Delete$/i }));
 
-  // After deletion, selection should move to a neighboring slide.
+  // After deletion, selection should move to a neighboring slide (remaining normal slide or global fallback).
   expect(screen.getByText(/^(Slide\s+\d+\s+—|Global Cover|Global Last Page)/i)).toBeInTheDocument();
 
-  // App starts with 1 normal slide by default.
-  // After adding 2 and deleting 1, we should have 2 normal slides remaining.
+  // After adding 2 and deleting 1, we should have 1 normal slide remaining.
   await waitFor(() => {
     const stored = JSON.parse(window.localStorage.getItem(LS_NORMAL_SLIDES_KEY) || "[]");
     expect(Array.isArray(stored)).toBe(true);
-    expect(stored).toHaveLength(2);
+    expect(stored).toHaveLength(1);
   });
 });
 
@@ -109,7 +136,8 @@ test("regression: deleting a selected normal slide decreases count and changes s
   const user = userEvent.setup();
   render(<App />);
 
-  // Create a stable scenario: start (1) + add 2 => 3 normal slides total.
+  // Create a stable scenario: add 3 slides.
+  await user.click(screen.getByRole("button", { name: /Add slide/i }));
   await user.click(screen.getByRole("button", { name: /Add slide/i }));
   await user.click(screen.getByRole("button", { name: /Add slide/i }));
 

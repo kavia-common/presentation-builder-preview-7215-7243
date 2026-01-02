@@ -188,7 +188,8 @@ function App() {
     () => loadSkillFactoriesFromStorage() || createDefaultSkillFactoryState()
   );
 
-  const [slides, setSlides] = useState(() => loadNormalSlidesFromStorage() || [createEmptySlide()]);
+  // Normal slides are allowed to be empty (user may delete all normal slides).
+  const [slides, setSlides] = useState(() => loadNormalSlidesFromStorage() || []);
   const [selectedId, setSelectedId] = useState(() => GLOBAL_COVER_ID);
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -826,18 +827,12 @@ function App() {
       const toDelete = safePrevSlides.find((s) => s.id === selectedId);
       if (toDelete?.image?.objectUrl) URL.revokeObjectURL(toDelete.image.objectUrl);
 
-      let nextSlides = safePrevSlides.filter((s) => s.id !== selectedId);
-
-      let createdSlide = null;
-      if (nextSlides.length === 0) {
-        createdSlide = createEmptySlide();
-        nextSlides = [createdSlide];
-      }
+      const nextSlides = safePrevSlides.filter((s) => s.id !== selectedId);
 
       const after = buildOrderedSelectionList({ factoriesList: factories, slidesList: nextSlides });
-      let nextSel = resolveClosestNeighborSelection({ beforeList: before, afterList: after, deletedId: selectedId });
-      if (createdSlide) nextSel = createdSlide.id;
+      const nextSel = resolveClosestNeighborSelection({ beforeList: before, afterList: after, deletedId: selectedId });
 
+      // If we deleted the last remaining normal slide, the neighbor resolver will typically pick Global Cover.
       setSelectedId(nextSel || GLOBAL_COVER_ID);
 
       // Persist immediately (in addition to the useEffect persistence).
