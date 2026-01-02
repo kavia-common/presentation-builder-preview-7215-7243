@@ -222,14 +222,20 @@ a{color:inherit}
   background:transparent;
 }
 .appHeaderMinimal{
-  /* Compact + sticky header */
-  padding:8px 0;
+  /* Compact + sticky header (match screenshot) */
+  padding:6px 0;
   position:sticky;
   top:0;
   z-index:60;
-  background:var(--ocean-bg);
-  border-bottom:1px solid rgba(17,24,39,0.08); /* subtle divider */
-  backdrop-filter:saturate(1.2) blur(4px);
+
+  /* Requested navbar gradient */
+  background:linear-gradient(45deg, #af2497 10%, #902d9a 20%, #1840a0 100%);
+
+  /* Subtle divider for contrast on content below */
+  border-bottom:1px solid rgba(255,255,255,0.22);
+
+  /* Keep subtle translucency effect without washing out the gradient */
+  backdrop-filter:saturate(1.1) blur(3px);
 }
 
 /* Header toolbar: standard nav bar */
@@ -253,7 +259,10 @@ a{color:inherit}
   font-weight:950;
   letter-spacing:-.02em;
   font-size:14px;
-  color:rgba(17,24,39,0.92);
+
+  /* White text on gradient */
+  color:rgba(255,255,255,0.96);
+
   padding:6px 8px;
   border-radius:12px;
   user-select:none;
@@ -271,14 +280,14 @@ a{color:inherit}
   gap:10px;
   padding:4px 8px; /* slightly tighter for image */
 }
-.navBrandButton:hover{background:rgba(17,24,39,0.04)}
+.navBrandButton:hover{background:rgba(255,255,255,0.12)}
 .navBrandButton:focus{
-  outline:2px solid rgba(37,99,235,0.40);
+  outline:2px solid rgba(255,255,255,0.55);
   outline-offset:2px;
 }
 
 .navLogo{
-  height:26px; /* sensible default ~24–28px */
+  height:24px; /* slightly tighter to match screenshot header height */
   width:auto;
   display:block;
   object-fit:contain;
@@ -302,14 +311,22 @@ a{color:inherit}
 .navItemLabel{
   font-size:12px;
   font-weight:950;
-  color:rgba(17,24,39,0.72);
+  color:rgba(255,255,255,0.88);
   white-space:nowrap;
 }
 
+/* Top header controls: keep compact height and good contrast */
 .navSelect{
   width:auto;
   min-width:220px;
   max-width:min(340px, 100%);
+  padding:8px 10px;
+  border-color:rgba(255,255,255,0.28);
+  background:rgba(255,255,255,0.12);
+  color:#fff;
+}
+.navSelect option{
+  color:var(--ocean-text); /* options list uses native menu; ensure readable */
 }
 
 .navRight{
@@ -322,11 +339,11 @@ a{color:inherit}
   justify-content:flex-end;
 }
 
-/* A11y: consistent, visible focus on header controls */
+/* A11y: consistent, visible focus on header controls (on dark background) */
 .navRight .btn:focus,
 .navSelect:focus,
 .smButton:focus{
-  outline:2px solid rgba(37,99,235,0.40);
+  outline:2px solid rgba(255,255,255,0.60);
   outline-offset:2px;
 }
 
@@ -342,6 +359,30 @@ a{color:inherit}
   .navSelect{min-width:200px}
 }
 
+/* Header-only button contrast tuning (do not change global button behavior) */
+.appHeaderMinimal .btnGhost{
+  color:rgba(255,255,255,0.95);
+  border-color:rgba(255,255,255,0.30);
+  background:rgba(255,255,255,0.10);
+}
+.appHeaderMinimal .btnGhost:hover{
+  background:rgba(255,255,255,0.16);
+}
+
+.appHeaderMinimal .btnSecondary{
+  /* Keep secondary amber but ensure it reads on gradient */
+  box-shadow:0 8px 18px rgba(0,0,0,0.12);
+}
+
+.appHeaderMinimal .btn{
+  box-shadow:0 8px 18px rgba(0,0,0,0.14);
+}
+
+/* Keep danger button consistent */
+.appHeaderMinimal .btnDanger{
+  box-shadow:0 8px 18px rgba(0,0,0,0.14);
+}
+
 /* --- Top slide mega-menu (grouped selector) --- */
 .smRoot{position:relative;display:inline-block;max-width:min(720px, 100%);width:100%}
 .smButton{
@@ -352,6 +393,14 @@ a{color:inherit}
   width:100%;
   text-align:left;
   cursor:pointer;
+
+  /* Make the trigger match header styling (menu stays white) */
+  border-color:rgba(255,255,255,0.28);
+  background:rgba(255,255,255,0.12);
+  color:#fff;
+}
+.smButton:hover{
+  background:rgba(255,255,255,0.16);
 }
 .smButtonLabel{
   min-width:0;
@@ -574,17 +623,30 @@ a{color:inherit}
 
 /* --- SlidePreview fit-to-width wrapper --- */
 .pvBody{
-  /* Keep preview from overflowing its pane */
+  /* Framed landscape preview with contained overflow (match screenshot) */
   min-width:0;
+  min-height:0;
   overflow:auto;
   overscroll-behavior:contain;
+
+  /* Consistent inner padding so the canvas doesn't touch edges */
+  padding:12px;
+
+  /* Center the scaled slide within the scrollable area */
+  display:grid;
+  place-items:start center;
 }
 .pvZoom{display:flex;align-items:center;gap:8px;flex:0 0 auto}
 .pvScaled{
   width:1280px;
   height:720px;
-  transform-origin:top left;
+
+  /* Keep scaling stable and prevent weird alignment */
+  transform-origin:top center;
   transition:transform .12s ease;
+
+  /* Ensure we don't exceed the container width unexpectedly */
+  max-width:100%;
 }
 .pvSlide{
   width:1280px;
@@ -592,6 +654,7 @@ a{color:inherit}
   max-width:100%;
   max-height:100%;
   overflow:hidden;
+  border-radius:16px; /* matches screenshot's rounded preview framing */
 }
 /* Prevent images inside preview from forcing horizontal scroll */
 .pvBody img{max-width:100%}
